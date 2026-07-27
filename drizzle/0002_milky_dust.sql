@@ -1,1 +1,0 @@
-ALTER TABLE `orders` ADD `gateway_payment_id` text;
