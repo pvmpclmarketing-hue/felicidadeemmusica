@@ -13,9 +13,9 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Canção Única | Sua história vira música",
-  description: "Crie uma música personalizada para marcar quem é importante.",
-  openGraph: { title: "Canção Única", description: "Sua história merece virar canção.", images: ["/og.png"] },
+  title: "Felicidade em Música | Sua história vira canção",
+  description: "Transforme momentos especiais em uma música personalizada e inesquecível.",
+  openGraph: { title: "Felicidade em Música", description: "Sua história vira música — 2 versões por R$ 39,90.", images: ["/og-felicidade.png"] },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <body className={`${jakarta.variable} ${playfair.variable} antialiased`}>
         {children}
       </body>
