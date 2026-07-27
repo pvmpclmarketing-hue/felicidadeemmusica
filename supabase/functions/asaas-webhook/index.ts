@@ -1,5 +1,24 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, order: Record<string, unknown>) {
+  const baseUrl = Deno.env.get("WHATSENTREGAVEL_URL");
+  const integrationKey = Deno.env.get("WHATSENTREGAVEL_INTEGRATION_KEY");
+  const secret = Deno.env.get("WHATSENTREGAVEL_PAYMENT_SECRET");
+  if (!baseUrl || !integrationKey || !secret) return;
+  const quiz = order.quiz_data ?? { recipient: order.recipient, style: order.style, honoree: order.honoree, story: order.story };
+  const payload = { event: "PAYMENT_APPROVED", integration_key: integrationKey, order_id: order.id, customer: { name: order.buyer_name, phone: `55${order.buyer_phone}` }, quiz, story: order.story };
+  const eventKey = `payment:${order.id}`;
+  const { data: notification, error: insertError } = await supabase.from("outbound_notifications").upsert({ provider: "whatsentregavel", event_key: eventKey, path: "/api/webhooks/payment", secret_header: "x-payment-secret", payload, status: "pending" }, { onConflict: "event_key", ignoreDuplicates: true }).select("id, status, attempts").maybeSingle();
+  if (insertError || !notification || notification.status === "sent") return;
+  try {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/webhooks/payment`, { method: "POST", headers: { "content-type": "application/json", "x-payment-secret": secret }, body: JSON.stringify(payload) });
+    if (!response.ok) throw new Error(`WhatsEntregavel respondeu ${response.status}`);
+    await supabase.from("outbound_notifications").update({ status: "sent", sent_at: new Date().toISOString(), attempts: notification.attempts + 1, last_error: null }).eq("id", notification.id);
+  } catch (error) {
+    await supabase.from("outbound_notifications").update({ status: "failed", attempts: notification.attempts + 1, last_error: error instanceof Error ? error.message : "Falha desconhecida" }).eq("id", notification.id);
+  }
+}
+
 Deno.serve(async (request) => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
   if (Deno.env.get("ASAAS_WEBHOOK_TOKEN") && request.headers.get("asaas-access-token") !== Deno.env.get("ASAAS_WEBHOOK_TOKEN")) return new Response("Unauthorized", { status: 401 });
@@ -11,10 +30,10 @@ Deno.serve(async (request) => {
     if (duplicate?.code === "23505") return Response.json({ received: true, duplicate: true });
     if (duplicate) throw duplicate;
     if (!event.payment?.id || !event.payment.externalReference || !["PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"].includes(event.event ?? "")) return Response.json({ received: true });
-    const { data: order } = await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", event.payment.externalReference).eq("asaas_payment_id", event.payment.id).select("id").maybeSingle();
+
+    const { data: order } = await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", event.payment.externalReference).eq("asaas_payment_id", event.payment.id).select("*").maybeSingle();
     if (!order) return Response.json({ received: true });
-    await supabase.from("generation_jobs").upsert({ order_id: order.id, status: "queued" }, { onConflict: "order_id", ignoreDuplicates: true });
-    await supabase.from("orders").update({ status: "queued" }).eq("id", order.id);
+    await notifyWhatsEntregavel(supabase, order);
     return Response.json({ received: true });
   } catch (error) {
     console.error(error);
