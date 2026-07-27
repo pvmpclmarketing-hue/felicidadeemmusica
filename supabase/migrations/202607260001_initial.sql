@@ -23,6 +23,7 @@ create table public.orders (
   asaas_payment_id text unique,
   lyric_text text,
   music_url text,
+  quiz_data jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   paid_at timestamptz,
   updated_at timestamptz not null default now()

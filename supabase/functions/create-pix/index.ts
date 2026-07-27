@@ -17,10 +17,10 @@ Deno.serve(async (request) => {
   try {
     const input = await request.json() as CheckoutInput;
     const phone = (input.buyerPhone ?? "").replace(/\D/g, "");
-    if (!input.recipient || !input.style || !input.name || !input.story || input.story.trim().length < 16 || !input.buyerName || !/^\d{10,11}$/.test(phone)) return fail("Informe seu nome e um WhatsApp brasileiro válido.");
+    if (!input.recipient || !input.style || !input.name || !input.story || input.story.trim().split(/\s+/).filter(Boolean).length < 2 || !input.buyerName || !/^\d{10,11}$/.test(phone)) return fail("Conte a história com pelo menos duas palavras e informe um WhatsApp brasileiro válido.");
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data: order, error: orderError } = await supabase.from("orders").insert({ recipient: input.recipient, style: input.style, honoree: input.name.trim(), story: input.story.trim(), buyer_name: input.buyerName.trim(), buyer_phone: phone }).select("id").single();
+    const { data: order, error: orderError } = await supabase.from("orders").insert({ recipient: input.recipient, style: input.style, honoree: input.name.trim(), story: input.story.trim(), buyer_name: input.buyerName.trim(), buyer_phone: phone, quiz_data: { recipient: input.recipient, style: input.style, honoree: input.name.trim(), story: input.story.trim() } }).select("id").single();
     if (orderError || !order) throw new Error("Não foi possível registrar o pedido.");
 
     const asaasUrl = Deno.env.get("ASAAS_API_URL") ?? "https://api.asaas.com/v3";
