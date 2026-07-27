@@ -8,8 +8,8 @@ Deno.serve(async (request) => {
   if (request.method !== "POST") return fail("Método não permitido.", 405);
 
   try {
-    const input = await request.json() as { recipient?: string; style?: string; honoree?: string; story?: string };
-    if (!input.recipient || !input.style || !input.honoree || !input.story || input.story.trim().split(/\s+/).filter(Boolean).length < 2) return fail("Preencha os dados da história para criar a prévia.");
+    const input = await request.json() as { recipient?: string; style?: string; voiceGender?: "m" | "f"; honoree?: string; story?: string };
+    if (!input.recipient || !input.style || !["m", "f"].includes(input.voiceGender ?? "") || !input.honoree || !input.story || input.story.trim().split(/\s+/).filter(Boolean).length < 2) return fail("Preencha os dados da história para criar a prévia.");
 
     const apiKey = Deno.env.get("OPENAI_API_KEY");
     if (!apiKey) return fail("A geração de letras ainda não foi configurada.", 503);
@@ -27,7 +27,7 @@ REGRAS OBRIGATÓRIAS
 FORMATO DE SAÍDA
 Responda somente com a letra pronta, sem explicação, introdução ou comentário. Use exatamente os títulos entre colchetes: [Verso 1], [Pré-refrão] quando houver, [Refrão], [Verso 2], [Ponte] e [Refrão Final].`;
 
-    const userInput = `NOME: ${input.honoree}\nRELAÇÃO: ${input.recipient}\nESTILO MUSICAL: ${input.style}\nHISTÓRIA:\n${input.story}`;
+    const userInput = `NOME: ${input.honoree}\nRELAÇÃO: ${input.recipient}\nESTILO MUSICAL: ${input.style}\nPREFERÊNCIA DE VOZ: ${input.voiceGender === "f" ? "feminina" : "masculina"}\nHISTÓRIA:\n${input.story}`;
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
@@ -39,7 +39,7 @@ Responda somente com a letra pronta, sem explicação, introdução ou comentár
     if (!response.ok || !lyrics) throw new Error(result.error?.message ?? "Não foi possível gerar a letra.");
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    await supabase.from("webhook_events").insert({ provider: "openai", event_key: crypto.randomUUID(), payload: { model: "gpt-5.4-mini", recipient: input.recipient, style: input.style } });
+    await supabase.from("webhook_events").insert({ provider: "openai", event_key: crypto.randomUUID(), payload: { model: "gpt-5.4-mini", recipient: input.recipient, style: input.style, voice_gender: input.voiceGender } });
     return new Response(JSON.stringify({ lyrics }), { headers: corsHeaders });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Falha ao criar a prévia.", 500);
