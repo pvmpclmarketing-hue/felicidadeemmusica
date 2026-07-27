@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+:root { --ink: #17142e; --cream: #fffaf5; --plum: #3f2052; --violet: #6740a3; --gold: #f1b55d; }
+
+@theme inline {
+  --font-sans: var(--font-jakarta);
+}
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+* { box-sizing: border-box; }
+button { font: inherit; }
