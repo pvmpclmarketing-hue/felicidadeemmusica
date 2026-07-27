@@ -18,7 +18,7 @@ create table public.orders (
   story text not null,
   buyer_name text not null,
   buyer_phone text not null,
-  amount_cents integer not null default 3990 check (amount_cents > 0),
+  amount_cents integer not null default 1990 check (amount_cents > 0),
   asaas_customer_id text,
   asaas_payment_id text unique,
   lyric_text text,
