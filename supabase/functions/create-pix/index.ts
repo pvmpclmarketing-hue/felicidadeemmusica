@@ -7,7 +7,7 @@ const corsHeaders = {
   "Vary": "Origin",
   "Content-Type": "application/json; charset=utf-8",
 };
-type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string };
+type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; buyerCpf?: string };
 const fail = (error: string, status = 400) => new Response(JSON.stringify({ error }), { status, headers: corsHeaders });
 
 async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, eventKey: string, path: string, secretHeader: string, secret: string | undefined, payload: Record<string, unknown>) {
@@ -33,7 +33,8 @@ Deno.serve(async (request) => {
   try {
     const input = await request.json() as CheckoutInput;
     const phone = (input.buyerPhone ?? "").replace(/\D/g, "");
-    if (!input.recipient || !input.style || !["m", "f"].includes(input.voiceGender ?? "") || !input.name || !input.story || input.story.trim().split(/\s+/).filter(Boolean).length < 2 || !input.buyerName || !/^\d{10,11}$/.test(phone)) return fail("Informe os dados obrigatórios para criar o Pix.");
+    const cpf = (input.buyerCpf ?? "").replace(/\D/g, "");
+    if (!input.recipient || !input.style || !["m", "f"].includes(input.voiceGender ?? "") || !input.name || !input.story || input.story.trim().split(/\s+/).filter(Boolean).length < 2 || !input.buyerName || !/^\d{10,11}$/.test(phone) || !/^\d{11}$/.test(cpf)) return fail("Informe nome, WhatsApp e CPF válidos para criar o Pix.");
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const quiz = { recipient: input.recipient, style: input.style, voice_gender: input.voiceGender, honoree: input.name.trim(), story: input.story.trim() };
@@ -46,7 +47,7 @@ Deno.serve(async (request) => {
     const asaasKey = Deno.env.get("ASAAS_API_KEY");
     if (!asaasKey) throw new Error("Pagamento não configurado.");
     const headers = { "content-type": "application/json", access_token: asaasKey };
-    const customerResponse = await fetch(`${asaasUrl}/customers`, { method: "POST", headers, body: JSON.stringify({ name: input.buyerName.trim(), mobilePhone: `55${phone}`, externalReference: order.id }) });
+    const customerResponse = await fetch(`${asaasUrl}/customers`, { method: "POST", headers, body: JSON.stringify({ name: input.buyerName.trim(), cpfCnpj: cpf, mobilePhone: `55${phone}`, externalReference: order.id }) });
     const customer = await customerResponse.json();
     if (!customerResponse.ok || !customer.id) throw new Error(customer.errors?.[0]?.description ?? "Não foi possível criar o cliente.");
     const dueDate = new Date().toISOString().slice(0, 10);
