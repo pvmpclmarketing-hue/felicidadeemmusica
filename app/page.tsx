@@ -33,7 +33,6 @@ export default function Home({directDownload=false,manualPayment=false}:{directD
     <section className="section"><p className="kicker">PACOTE DISPONÍVEL</p><h2>Uma experiência para marcar para sempre</h2><p>Não entregamos somente áudio: transformamos detalhes da sua história em uma canção para emocionar.</p><article className="pricing"><div className="pricing-tag">OFERTA ESPECIAL</div><p>Experiência completa</p><h3>Pacote Premium</h3><div><s>R$ 147,00</s><strong>R$ 19,90</strong><small>Pagamento único</small></div><p className="bonus">🎁 Pague 1, leve 2 versões</p><ul><li>Composição completa e personalizada</li><li>Voz e produção profissional</li><li>2 versões da música</li><li>Prévia antes do pagamento</li><li>Arquivo para guardar para sempre</li></ul><button className="primary" onClick={start}>🎵 Criar minha música</button><small>Você só paga depois de conferir a prévia.</small></article></section>
     <section className="faq" id="duvidas"><p className="kicker">TIRE SUAS DÚVIDAS</p><h2>Tudo o que você precisa saber antes de pedir sua música</h2>{faqs.map(([question,answer],index)=><button className="faq-item" key={question} onClick={()=>setOpenFaq(openFaq===index?null:index)}><span><b>{question}</b>{openFaq===index&&<em>{answer}</em>}</span><strong>{openFaq===index?"−":"+"}</strong></button>)}</section>
     <footer>© 2026 Felicidade em Música · Transformando histórias em canções ❤️</footer>
-    <button className="floating-cta" onClick={start}>🎵 Criar minha música</button>
   </main>;
 }
 
