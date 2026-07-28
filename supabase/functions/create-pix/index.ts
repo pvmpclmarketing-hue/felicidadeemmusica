@@ -1,8 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
+  "Access-Control-Allow-Origin": "https://felicidadeemmusica.vercel.app",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Vary": "Origin",
   "Content-Type": "application/json; charset=utf-8",
 };
 type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string };
