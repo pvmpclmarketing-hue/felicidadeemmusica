@@ -19,6 +19,17 @@ async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, 
   }
 }
 
+async function startDirectDelivery(supabase: ReturnType<typeof createClient>, order: Record<string, unknown>) {
+  const apiKey = Deno.env.get("KIE_API_KEY"), secret = Deno.env.get("KIE_CALLBACK_SECRET");
+  if (!apiKey || !secret || !order.lyric_text) { await supabase.from("orders").update({ status: "delivery_failed" }).eq("id", order.id); return; }
+  await supabase.from("orders").update({ status: "generating" }).eq("id", order.id);
+  const callback = `${Deno.env.get("SUPABASE_URL")}/functions/v1/kie-delivery-webhook?secret=${encodeURIComponent(secret)}`;
+  const response = await fetch("https://api.kie.ai/api/v1/generate", { method: "POST", headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ customMode: true, instrumental: false, model: "V4", prompt: order.lyric_text, style: order.style, title: `Uma música para ${order.honoree}`, vocalGender: order.quiz_data?.voice_gender ?? "f", callBackUrl: callback }) });
+  const payload = await response.json() as { data?: { taskId?: string } };
+  if (!response.ok || !payload.data?.taskId) { await supabase.from("orders").update({ status: "delivery_failed" }).eq("id", order.id); return; }
+  await supabase.from("orders").update({ kie_task_id: payload.data.taskId }).eq("id", order.id);
+}
+
 Deno.serve(async (request) => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
   if (Deno.env.get("ASAAS_WEBHOOK_TOKEN") && request.headers.get("asaas-access-token") !== Deno.env.get("ASAAS_WEBHOOK_TOKEN")) return new Response("Unauthorized", { status: 401 });
@@ -37,7 +48,7 @@ Deno.serve(async (request) => {
     if (!pendingOrder) return Response.json({ received: true });
     const { data: order } = await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), asaas_payment_id: event.payment.id }).eq("id", pendingOrder.id).eq("status", "awaiting_payment").select("*").maybeSingle();
     if (!order) return Response.json({ received: true });
-    await notifyWhatsEntregavel(supabase, order);
+    if (order.delivery_mode === "download") await startDirectDelivery(supabase, order); else await notifyWhatsEntregavel(supabase, order);
     return Response.json({ received: true });
   } catch (error) {
     console.error(error);
