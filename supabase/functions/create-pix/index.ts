@@ -36,11 +36,13 @@ Deno.serve(async (request) => {
     if (!input.recipient || !input.style || !["m", "f"].includes(input.voiceGender ?? "") || !input.name || !input.story || input.story.trim().split(/\s+/).filter(Boolean).length < 2 || !input.buyerName || !/^\d{10,11}$/.test(phone)) return fail("Informe nome e WhatsApp válidos para criar o Pix.");
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const amountCents = Number(Deno.env.get("MUSIC_PRICE_CENTS") ?? "1990");
+    if (!Number.isInteger(amountCents) || amountCents < 100) throw new Error("Valor da música não foi configurado corretamente.");
     const quiz = { recipient: input.recipient, style: input.style, voice_gender: input.voiceGender, honoree: input.name.trim(), story: input.story.trim() };
     let lyrics = input.lyricText?.trim() || null;
     if (input.deliveryMode === "download" && input.previewId) { const { data: preview } = await supabase.from("audio_previews").select("lyric_text").eq("id", input.previewId).single(); lyrics = preview?.lyric_text ?? lyrics; }
     if (input.deliveryMode === "download" && !lyrics) return fail("Não foi possível localizar a letra desta prévia.");
-    const { data: order, error: orderError } = await supabase.from("orders").insert({ recipient: input.recipient, style: input.style, honoree: input.name.trim(), story: input.story.trim(), lyric_text: lyrics, buyer_name: input.buyerName.trim(), buyer_phone: phone, amount_cents: 1990, quiz_data: quiz, delivery_mode: input.deliveryMode === "download" ? "download" : "whatsapp" }).select("id").single();
+    const { data: order, error: orderError } = await supabase.from("orders").insert({ recipient: input.recipient, style: input.style, honoree: input.name.trim(), story: input.story.trim(), lyric_text: lyrics, buyer_name: input.buyerName.trim(), buyer_phone: phone, amount_cents: amountCents, quiz_data: quiz, delivery_mode: input.deliveryMode === "download" ? "download" : "whatsapp" }).select("id").single();
     if (orderError || !order) throw new Error("Não foi possível registrar o pedido.");
 
     if (input.deliveryMode !== "download") await notifyWhatsEntregavel(supabase, `site:${order.id}`, "/api/webhooks/site", "x-site-secret", Deno.env.get("WHATSENTREGAVEL_SITE_SECRET"), { order_id: order.id, name: input.buyerName.trim(), phone: `55${phone}`, paid: false, quiz, story: input.story.trim() });
@@ -50,7 +52,7 @@ Deno.serve(async (request) => {
     const addressKey = Deno.env.get("ASAAS_PIX_ADDRESS_KEY");
     if (!asaasKey || !addressKey) throw new Error("Pagamento Pix ainda não foi configurado.");
     const headers = { "content-type": "application/json", access_token: asaasKey };
-    const qrResponse = await fetch(`${asaasUrl}/pix/qrCodes/static`, { method: "POST", headers, body: JSON.stringify({ addressKey, description: `Felicidade em Música — pedido ${order.id}`, value: 19.9, format: "ALL", expirationSeconds: 1800, allowsMultiplePayments: false, externalReference: order.id }) });
+    const qrResponse = await fetch(`${asaasUrl}/pix/qrCodes/static`, { method: "POST", headers, body: JSON.stringify({ addressKey, description: `Felicidade em Música — pedido ${order.id}`, value: amountCents / 100, format: "ALL", expirationSeconds: 1800, allowsMultiplePayments: false, externalReference: order.id }) });
     const qr = await qrResponse.json();
     if (!qrResponse.ok || !qr.id || !qr.encodedImage || !qr.payload) throw new Error(qr.errors?.[0]?.description ?? "Não foi possível gerar o QR Code Pix.");
 

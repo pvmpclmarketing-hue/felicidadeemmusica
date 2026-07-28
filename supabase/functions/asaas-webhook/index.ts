@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { trackMetaPurchase } from "../_shared/meta.ts";
 
 async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, order: Record<string, unknown>) {
   const baseUrl = Deno.env.get("WHATSENTREGAVEL_URL");
@@ -48,6 +49,7 @@ Deno.serve(async (request) => {
     if (!pendingOrder) return Response.json({ received: true });
     const { data: order } = await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), asaas_payment_id: event.payment.id }).eq("id", pendingOrder.id).eq("status", "awaiting_payment").select("*").maybeSingle();
     if (!order) return Response.json({ received: true });
+    await trackMetaPurchase(order, request);
     if (order.delivery_mode === "download") await startDirectDelivery(supabase, order); else await notifyWhatsEntregavel(supabase, order);
     return Response.json({ received: true });
   } catch (error) {
