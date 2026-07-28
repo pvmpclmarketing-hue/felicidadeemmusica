@@ -1,0 +1,43 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+type Form = { recipient: string; style: string; voiceGender: "" | "m" | "f"; honoree: string; story: string; buyerName: string; phone: string };
+const recipients = ["Meu amor", "Minha mãe", "Meu pai", "Uma amizade", "Outra pessoa especial"];
+const styles = ["Romântico", "Sertanejo", "Gospel", "MPB", "Pop acústico", "Samba", "Pagode"];
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+async function edge(name: string, body: unknown) {
+  if (!url || !key) throw new Error("O site ainda não foi configurado.");
+  const response = await fetch(`${url}/functions/v1/${name}`, { method: "POST", headers: { "content-type": "application/json", apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify(body) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Tente novamente.");
+  return data;
+}
+
+export default function VersaoDois() {
+  const [screen, setScreen] = useState<"start" | "quiz" | "creating" | "listen" | "contact" | "pix">("start");
+  const [step, setStep] = useState(0); const [loading, setLoading] = useState(false); const [error, setError] = useState("");
+  const [previewId, setPreviewId] = useState(""); const [audioUrl, setAudioUrl] = useState(""); const [pix, setPix] = useState<{ qrCode: string; payload: string }>();
+  const [form, setForm] = useState<Form>({ recipient: "", style: "", voiceGender: "", honoree: "", story: "", buyerName: "", phone: "" });
+  const set = (name: keyof Form, value: string) => setForm((current) => ({ ...current, [name]: value }));
+  const ready = step === 0 ? !!form.recipient : step === 1 ? !!form.style : step === 2 ? !!form.voiceGender : step === 3 ? form.honoree.trim().length > 1 : !!form.story.trim();
+
+  useEffect(() => {
+    if (screen !== "creating" || !previewId) return;
+    const check = async () => { try { const data = await edge("get-audio-preview", { previewId }); if (data.status === "ready" && data.audioUrl) { setAudioUrl(data.audioUrl); setScreen("listen"); } else if (data.status === "failed") { setError(data.error || "Não foi possível criar a música."); setScreen("quiz"); } } catch (cause) { setError(cause instanceof Error ? cause.message : "Não foi possível consultar a música."); } };
+    void check(); const timer = window.setInterval(() => void check(), 6000); return () => window.clearInterval(timer);
+  }, [screen, previewId]);
+
+  async function createPreview() { setLoading(true); setError(""); try { const data = await edge("generate-audio-preview", { recipient: form.recipient, style: form.style, voiceGender: form.voiceGender, honoree: form.honoree, story: form.story }); setPreviewId(data.previewId); setScreen("creating"); } catch (cause) { setError(cause instanceof Error ? cause.message : "Não foi possível iniciar a música."); } finally { setLoading(false); } }
+  async function createPix() { setLoading(true); setError(""); try { const data = await edge("create-pix", { recipient: form.recipient, style: form.style, voiceGender: form.voiceGender, name: form.honoree, story: form.story, buyerName: form.buyerName, buyerPhone: form.phone.replace(/\D/g, "") }); setPix({ qrCode: data.qrCode, payload: data.pixPayload }); setScreen("pix"); } catch (cause) { setError(cause instanceof Error ? cause.message : "Não foi possível gerar o Pix."); } finally { setLoading(false); } }
+
+  if (screen === "start") return <main className="v2-start"><div className="v2-card"><p className="kicker">PRÉVIA EM MÚSICA</p><h1>Antes de decidir, <i>ouça</i> uma música criada para a sua história.</h1><p>Você conta os momentos especiais. Nós criamos uma prévia completa para emocionar — e só depois você escolhe se quer receber as duas versões.</p><button className="primary" onClick={() => setScreen("quiz")}>Criar minha prévia em música</button><small>Sem pagamento nesta etapa.</small></div></main>;
+  if (screen === "creating") return <main className="flow v2-flow center"><div className="v2-pulse">♫</div><p className="kicker">CRIANDO SUA PRÉVIA</p><h1>Estamos transformando a sua história em música.</h1><p className="v2-copy">Isso pode levar alguns instantes. Deixe esta página aberta para ouvir assim que estiver pronta.</p><div className="v2-loader"><span /></div></main>;
+  if (screen === "listen") return <main className="flow v2-flow center"><p className="kicker">SUA PRÉVIA ESTÁ PRONTA</p><h1>Uma música para {form.honoree}</h1><p className="v2-copy">Dê o play e imagine a reação dessa pessoa especial.</p><div className="v2-player"><span className="v2-player-label">PRÉVIA EXCLUSIVA</span><audio controls controlsList="nodownload noplaybackrate" onContextMenu={(event) => event.preventDefault()} src={audioUrl}>Seu navegador não suporta áudio.</audio></div><button className="primary" onClick={() => setScreen("contact")}>Quero receber as 2 versões completas</button><button className="text-button" onClick={() => setScreen("quiz")}>Quero ajustar minha história</button></main>;
+  if (screen === "contact") return <main className="flow light v2-flow"><button className="brand-back" onClick={() => setScreen("listen")}>← Voltar para a prévia</button><p className="kicker">ÚLTIMO PASSO</p><h1>Gere o Pix para receber suas duas versões completas.</h1><p className="v2-copy">{form.honoree} vai se encantar com essa surpresa. Seus dados são usados apenas para enviar a música pelo WhatsApp.</p><label>Seu nome<input value={form.buyerName} onChange={(event) => set("buyerName", event.target.value)} placeholder="Como podemos te chamar?" /></label><label>Seu WhatsApp<div className="phone"><b>+55</b><input inputMode="numeric" value={form.phone} onChange={(event) => set("phone", event.target.value.replace(/\D/g, ""))} placeholder="DDD + número" /></div></label><button className="primary pix-action" disabled={loading || !form.buyerName.trim() || form.phone.length < 10} onClick={createPix}>{loading ? "Gerando Pix…" : "Garantir as 2 versões por R$ 19,90"}</button>{error && <p className="error">{error}</p>}</main>;
+  if (screen === "pix" && pix) return <main className="flow light v2-flow center"><p className="kicker">PAGAMENTO SEGURO</p><h1>Falta pouco para essa surpresa ficar pronta.</h1><div className="pix-card"><img src={pix.qrCode} alt="QR Code Pix" /><p>Escaneie o QR Code ou copie o código abaixo. Assim que o pagamento for confirmado, avisaremos você pelo WhatsApp.</p><button className="primary pix-action" onClick={() => navigator.clipboard.writeText(pix.payload)}>Copiar código Pix</button></div></main>;
+  const labels = ["Para quem é a canção?", "Qual estilo combina mais?", "Qual voz combina mais com esta música?", "Qual é o nome da pessoa especial?", "Conte a história que vira canção"];
+  return <main className="flow v2-flow"><button className="brand-back" onClick={() => step ? setStep(step - 1) : setScreen("start")}>← Felicidade em Música</button><p className="kicker">ETAPA {step + 1} DE 5</p><h1>{labels[step]}</h1>{step === 0 && <div className="choices">{recipients.map((item) => <button className={form.recipient === item ? "selected" : ""} key={item} onClick={() => set("recipient", item)}>{item}<span>→</span></button>)}</div>}{step === 1 && <div className="choices">{styles.map((item) => <button className={form.style === item ? "selected" : ""} key={item} onClick={() => set("style", item)}>{item}<span>→</span></button>)}</div>}{step === 2 && <div className="choices"><button className={form.voiceGender === "f" ? "selected" : ""} onClick={() => set("voiceGender", "f")}>Voz feminina <span>♫</span></button><button className={form.voiceGender === "m" ? "selected" : ""} onClick={() => set("voiceGender", "m")}>Voz masculina <span>♫</span></button></div>}{step === 3 && <><p className="v2-copy">Ouvir o próprio nome na música transforma a surpresa em uma lembrança para sempre.</p><input autoFocus value={form.honoree} onChange={(event) => set("honoree", event.target.value)} placeholder="Ex.: Maria" /></>}{step === 4 && <textarea autoFocus value={form.story} onChange={(event) => set("story", event.target.value)} placeholder="Conte momentos, apelidos, sentimentos e tudo que não pode faltar…" />}<button className="primary" disabled={!ready || loading} onClick={() => step === 4 ? void createPreview() : setStep(step + 1)}>{step === 4 && loading ? "Preparando sua música…" : "Continuar"}</button>{error && <p className="error">{error}</p>}</main>;
+}
