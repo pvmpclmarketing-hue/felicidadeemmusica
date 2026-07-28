@@ -7,7 +7,7 @@ const corsHeaders = {
   "Vary": "Origin",
   "Content-Type": "application/json; charset=utf-8",
 };
-type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; buyerCpf?: string };
+type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string };
 const fail = (error: string, status = 400) => new Response(JSON.stringify({ error }), { status, headers: corsHeaders });
 
 async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, eventKey: string, path: string, secretHeader: string, secret: string | undefined, payload: Record<string, unknown>) {
@@ -33,8 +33,7 @@ Deno.serve(async (request) => {
   try {
     const input = await request.json() as CheckoutInput;
     const phone = (input.buyerPhone ?? "").replace(/\D/g, "");
-    const cpf = (input.buyerCpf ?? "").replace(/\D/g, "");
-    if (!input.recipient || !input.style || !["m", "f"].includes(input.voiceGender ?? "") || !input.name || !input.story || input.story.trim().split(/\s+/).filter(Boolean).length < 2 || !input.buyerName || !/^\d{10,11}$/.test(phone) || !/^\d{11}$/.test(cpf)) return fail("Informe nome, WhatsApp e CPF válidos para criar o Pix.");
+    if (!input.recipient || !input.style || !["m", "f"].includes(input.voiceGender ?? "") || !input.name || !input.story || input.story.trim().split(/\s+/).filter(Boolean).length < 2 || !input.buyerName || !/^\d{10,11}$/.test(phone)) return fail("Informe nome e WhatsApp válidos para criar o Pix.");
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const quiz = { recipient: input.recipient, style: input.style, voice_gender: input.voiceGender, honoree: input.name.trim(), story: input.story.trim() };
@@ -45,20 +44,14 @@ Deno.serve(async (request) => {
 
     const asaasUrl = Deno.env.get("ASAAS_API_URL") ?? "https://api.asaas.com/v3";
     const asaasKey = Deno.env.get("ASAAS_API_KEY");
-    if (!asaasKey) throw new Error("Pagamento não configurado.");
+    const addressKey = Deno.env.get("ASAAS_PIX_ADDRESS_KEY");
+    if (!asaasKey || !addressKey) throw new Error("Pagamento Pix ainda não foi configurado.");
     const headers = { "content-type": "application/json", access_token: asaasKey };
-    const customerResponse = await fetch(`${asaasUrl}/customers`, { method: "POST", headers, body: JSON.stringify({ name: input.buyerName.trim(), cpfCnpj: cpf, mobilePhone: phone, externalReference: order.id }) });
-    const customer = await customerResponse.json();
-    if (!customerResponse.ok || !customer.id) throw new Error(customer.errors?.[0]?.description ?? "Não foi possível criar o cliente.");
-    const dueDate = new Date().toISOString().slice(0, 10);
-    const paymentResponse = await fetch(`${asaasUrl}/payments`, { method: "POST", headers, body: JSON.stringify({ customer: customer.id, billingType: "PIX", value: 19.9, dueDate, description: `Felicidade em Música — 2 versões para ${input.name}`, externalReference: order.id }) });
-    const payment = await paymentResponse.json();
-    if (!paymentResponse.ok || !payment.id) throw new Error(payment.errors?.[0]?.description ?? "Não foi possível criar a cobrança Pix.");
-    const qrResponse = await fetch(`${asaasUrl}/payments/${payment.id}/pixQrCode`, { headers: { access_token: asaasKey } });
+    const qrResponse = await fetch(`${asaasUrl}/pix/qrCodes/static`, { method: "POST", headers, body: JSON.stringify({ addressKey, description: `Felicidade em Música — pedido ${order.id}`, value: 19.9, format: "ALL", expirationSeconds: 1800, allowsMultiplePayments: false, externalReference: order.id }) });
     const qr = await qrResponse.json();
-    if (!qrResponse.ok || !qr.encodedImage || !qr.payload) throw new Error("O Asaas não retornou o QR Code Pix.");
+    if (!qrResponse.ok || !qr.id || !qr.encodedImage || !qr.payload) throw new Error(qr.errors?.[0]?.description ?? "Não foi possível gerar o QR Code Pix.");
 
-    await supabase.from("orders").update({ asaas_customer_id: customer.id, asaas_payment_id: payment.id }).eq("id", order.id);
+    await supabase.from("orders").update({ asaas_static_qr_id: qr.id }).eq("id", order.id);
     return new Response(JSON.stringify({ orderId: order.id, qrCode: `data:image/png;base64,${qr.encodedImage}`, pixPayload: qr.payload, expiresAt: qr.expirationDate }), { headers: corsHeaders });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Falha ao gerar o Pix.", 500);
