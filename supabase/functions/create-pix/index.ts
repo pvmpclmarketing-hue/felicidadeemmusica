@@ -47,7 +47,7 @@ Deno.serve(async (request) => {
     const asaasKey = Deno.env.get("ASAAS_API_KEY");
     if (!asaasKey) throw new Error("Pagamento não configurado.");
     const headers = { "content-type": "application/json", access_token: asaasKey };
-    const customerResponse = await fetch(`${asaasUrl}/customers`, { method: "POST", headers, body: JSON.stringify({ name: input.buyerName.trim(), cpfCnpj: cpf, mobilePhone: `55${phone}`, externalReference: order.id }) });
+    const customerResponse = await fetch(`${asaasUrl}/customers`, { method: "POST", headers, body: JSON.stringify({ name: input.buyerName.trim(), cpfCnpj: cpf, mobilePhone: phone, externalReference: order.id }) });
     const customer = await customerResponse.json();
     if (!customerResponse.ok || !customer.id) throw new Error(customer.errors?.[0]?.description ?? "Não foi possível criar o cliente.");
     const dueDate = new Date().toISOString().slice(0, 10);
