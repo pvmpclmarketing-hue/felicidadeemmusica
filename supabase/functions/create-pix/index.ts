@@ -53,7 +53,9 @@ Deno.serve(async (request) => {
     if (!asaasKey) throw new Error("Configure a ASAAS_API_KEY nos Secrets do Supabase.");
     if (!addressKey) throw new Error("Configure a ASAAS_PIX_ADDRESS_KEY nos Secrets do Supabase.");
     const headers = { "content-type": "application/json", access_token: asaasKey };
-    const qrResponse = await fetch(`${asaasUrl}/pix/qrCodes/static`, { method: "POST", headers, body: JSON.stringify({ addressKey, description: `Felicidade em Música — pedido ${order.id}`, value: amountCents / 100, format: "ALL", expirationSeconds: 1800, allowsMultiplePayments: false, externalReference: order.id }) });
+    // Asaas aceita no máximo 50 caracteres na descrição do QR Code estático.
+    const qrDescription = `Pedido música ${order.id.slice(0, 8)}`;
+    const qrResponse = await fetch(`${asaasUrl}/pix/qrCodes/static`, { method: "POST", headers, body: JSON.stringify({ addressKey, description: qrDescription, value: amountCents / 100, format: "ALL", expirationSeconds: 1800, allowsMultiplePayments: false, externalReference: order.id }) });
     const qr = await qrResponse.json();
     if (!qrResponse.ok || !qr.id || !qr.encodedImage || !qr.payload) throw new Error(qr.errors?.[0]?.description ?? "Não foi possível gerar o QR Code Pix.");
 
