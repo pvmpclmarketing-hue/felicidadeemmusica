@@ -1,14 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { trackMetaPurchase } from "../_shared/meta.ts";
+import { trackMetaPurchase } from "./meta.ts";
 
 async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, order: Record<string, unknown>) {
   const baseUrl = Deno.env.get("WHATSENTREGAVEL_URL");
   const integrationKey = Deno.env.get("WHATSENTREGAVEL_INTEGRATION_KEY");
   const secret = Deno.env.get("WHATSENTREGAVEL_PAYMENT_SECRET");
   if (!baseUrl || !integrationKey || !secret) return;
-  const quiz = order.quiz_data ?? { recipient: order.recipient, style: order.style, honoree: order.honoree, story: order.story };
-  const payload = { event: "PAYMENT_APPROVED", integration_key: integrationKey, order_id: order.id, customer: { name: order.buyer_name, phone: `55${order.buyer_phone}` }, quiz, story: order.story };
   const eventKey = `payment:${order.id}`;
+  const quiz = (order.quiz_data ?? { recipient: order.recipient, style: order.style, honoree: order.honoree, story: order.story }) as Record<string, unknown>;
+  const previewAudios = Array.isArray(quiz.preview_audio_urls) ? quiz.preview_audio_urls.filter((url: unknown): url is string => typeof url === "string") : [];
+  const payload = { event: "PAYMENT_APPROVED", idempotency_key: eventKey, integration_key: integrationKey, order_id: order.id, customer: { name: order.buyer_name, phone: `55${order.buyer_phone}` }, quiz, preview: { id: typeof quiz.preview_id === "string" ? quiz.preview_id : null, audios: previewAudios }, story: order.story };
   const { data: notification, error: insertError } = await supabase.from("outbound_notifications").upsert({ provider: "whatsentregavel", event_key: eventKey, path: "/api/webhooks/payment", secret_header: "x-payment-secret", payload, status: "pending" }, { onConflict: "event_key", ignoreDuplicates: true }).select("id, status, attempts").maybeSingle();
   if (insertError || !notification || notification.status === "sent") return;
   try {

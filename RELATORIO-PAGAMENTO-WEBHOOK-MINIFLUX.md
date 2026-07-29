@@ -58,6 +58,7 @@ O miniflux deve aceitar `POST /api/webhooks/payment`, validar o cabeçalho `x-pa
 ```json
 {
   "event": "PAYMENT_APPROVED",
+  "idempotency_key": "payment:uuid-do-pedido",
   "integration_key": "configurada-no-supabase",
   "order_id": "uuid-do-pedido",
   "customer": {
@@ -76,11 +77,18 @@ O miniflux deve aceitar `POST /api/webhooks/payment`, validar o cabeçalho `x-pa
       "https://url-da-segunda-prévia"
     ]
   },
+  "preview": {
+    "id": "uuid-da-prévia-ou-null",
+    "audios": [
+      "https://url-da-primeira-prévia",
+      "https://url-da-segunda-prévia"
+    ]
+  },
   "story": "história enviada"
 }
 ```
 
-`preview_audio_urls` contém as duas prévias geradas pela Kie nas versões com prévia em áudio. Nas versões que exibem apenas letra, esse campo será uma lista vazia.
+`preview.audios` é o campo principal para o miniflux: contém as duas prévias geradas pela Kie nas versões com prévia em áudio. `quiz.preview_audio_urls` é mantido como cópia de compatibilidade. Nas versões que exibem apenas letra, ambas as listas ficam vazias.
 
 ## O que o miniflux deve conferir
 
@@ -89,7 +97,15 @@ O miniflux deve aceitar `POST /api/webhooks/payment`, validar o cabeçalho `x-pa
 3. O retorno HTTP é `200` ou `204` rapidamente.
 4. O fluxo não depende de dados adicionais além do payload recebido.
 5. O telefone é tratado como número brasileiro no formato `55` + DDD + número, sem símbolos.
-6. O fluxo é idempotente por `order_id`: se o mesmo evento chegar novamente, não deve enviar mensagens duplicadas nem iniciar produção duplicada.
+6. O fluxo é idempotente por `idempotency_key` (formato `payment:<order_id>`): se o mesmo evento chegar novamente, não deve enviar mensagens duplicadas nem iniciar produção duplicada.
+
+## Idempotência implementada
+
+- O Supabase registra cada evento recebido do Asaas em `webhook_events` com chave única.
+- A mudança do pedido para `paid` só acontece quando o status anterior é `awaiting_payment`; somente uma requisição concorrente consegue essa atualização.
+- A saída para o miniflux é gravada em `outbound_notifications` com `event_key` único no formato `payment:<order_id>`.
+- O payload leva `idempotency_key` no mesmo formato. O miniflux deve persistir essa chave antes de iniciar a produção ou enviar WhatsApp; se ela já existir, deve responder sucesso sem repetir a ação.
+- Reenvios técnicos só podem tentar novamente a mesma notificação pendente/falha; nunca devem criar uma segunda notificação para o mesmo pedido.
 
 ## Teste de ponta a ponta
 
