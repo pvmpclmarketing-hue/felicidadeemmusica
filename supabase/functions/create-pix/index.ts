@@ -50,7 +50,8 @@ Deno.serve(async (request) => {
     const asaasUrl = Deno.env.get("ASAAS_API_URL") ?? "https://api.asaas.com/v3";
     const asaasKey = Deno.env.get("ASAAS_API_KEY");
     const addressKey = Deno.env.get("ASAAS_PIX_ADDRESS_KEY");
-    if (!asaasKey || !addressKey) throw new Error("Pagamento Pix ainda não foi configurado.");
+    if (!asaasKey) throw new Error("Configure a ASAAS_API_KEY nos Secrets do Supabase.");
+    if (!addressKey) throw new Error("Configure a ASAAS_PIX_ADDRESS_KEY nos Secrets do Supabase.");
     const headers = { "content-type": "application/json", access_token: asaasKey };
     const qrResponse = await fetch(`${asaasUrl}/pix/qrCodes/static`, { method: "POST", headers, body: JSON.stringify({ addressKey, description: `Felicidade em Música — pedido ${order.id}`, value: amountCents / 100, format: "ALL", expirationSeconds: 1800, allowsMultiplePayments: false, externalReference: order.id }) });
     const qr = await qrResponse.json();
