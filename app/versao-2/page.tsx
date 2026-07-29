@@ -30,7 +30,7 @@ export default function VersaoDois({directDownload=false,manualPayment=false}:{d
 
   useEffect(() => {
     if (screen !== "creating" || !previewId) return;
-    const check = async () => { try { const data = await edge("get-audio-preview", { previewId }); if (data.status === "ready" && data.audioUrls?.length) { setAudioUrls(data.audioUrls); setScreen("listen"); } else if (data.status === "failed") { setError(data.error || "Não foi possível criar a música."); setScreen("quiz"); } } catch (cause) { setError(cause instanceof Error ? cause.message : "Não foi possível consultar a música."); } };
+    const check = async () => { try { const data = await edge("get-audio-preview", { previewId }); const urls = Array.isArray(data.audioUrls) && data.audioUrls.length ? data.audioUrls : data.audioUrl ? [data.audioUrl] : []; if (data.status === "ready" && urls.length) { setAudioUrls(urls); setScreen("listen"); } else if (data.status === "failed") { setError(data.error || "Não foi possível criar a música."); setScreen("quiz"); } } catch (cause) { setError(cause instanceof Error ? cause.message : "Não foi possível consultar a música."); } };
     void check(); const timer = window.setInterval(() => void check(), 6000); return () => window.clearInterval(timer);
   }, [screen, previewId]);
   useEffect(() => { if(screen!=="creating" || !generationStartedAt) return; const update=()=>{const elapsed=(Date.now()-generationStartedAt)/1000; const target=elapsed<20?5+(elapsed*2):Math.min(94,45+((elapsed-20)*.27)); setProgress(current=>Math.max(current,Math.round(target)));}; update(); const timer=window.setInterval(update,800); return()=>window.clearInterval(timer); },[screen,generationStartedAt]);
