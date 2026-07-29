@@ -61,6 +61,9 @@ O miniflux deve aceitar `POST /api/webhooks/payment`, validar o cabeçalho `x-pa
   "idempotency_key": "payment:uuid-do-pedido",
   "integration_key": "configurada-no-supabase",
   "order_id": "uuid-do-pedido",
+  "fulfillment": {
+    "mode": "deliver_existing_preview_audio"
+  },
   "customer": {
     "name": "nome do cliente",
     "phone": "55DDDNUMERO"
@@ -74,6 +77,8 @@ O miniflux deve aceitar `POST /api/webhooks/payment`, validar o cabeçalho `x-pa
     "honoree": "nome do homenageado",
     "story": "história enviada",
     "preview_id": "uuid-da-prévia-ou-null",
+    "fulfillment_mode": "deliver_existing_preview_audio",
+    "site_variant": "audio_preview_whatsapp",
     "preview_audio_urls": [
       "https://url-da-primeira-prévia",
       "https://url-da-segunda-prévia"
@@ -93,6 +98,17 @@ O miniflux deve aceitar `POST /api/webhooks/payment`, validar o cabeçalho `x-pa
 `quiz.music_style` é o campo de gênero musical a ser usado pelo miniflux. `quiz.voice_gender` recebe `m` ou `f`. `lyric_text` contém a letra exata aprovada pelo cliente e deve ser enviada à Kie como prompt; não use apenas `story` quando `lyric_text` estiver disponível.
 
 `preview.audios` é o campo principal para o miniflux: contém as duas prévias geradas pela Kie nas versões com prévia em áudio. `quiz.preview_audio_urls` é mantido como cópia de compatibilidade. Nas versões que exibem apenas letra, ambas as listas ficam vazias.
+
+## Regra obrigatória de separação dos fluxos
+
+O miniflux deve usar **somente** `fulfillment.mode` para decidir o que fazer:
+
+| `fulfillment.mode` | Origem | Ação do miniflux |
+| --- | --- | --- |
+| `deliver_existing_preview_audio` | Versão do site com prévia em música | Não chamar a Kie. Usar `preview.audios[0]` e `preview.audios[1]` para enviar as duas músicas que o cliente ouviu na prévia. |
+| `generate_music_in_miniflux` | Versão do site com prévia de letra | Chamar a Kie dentro do fluxo usando `lyric_text` como `prompt`, `quiz.music_style` como estilo e `quiz.voice_gender` como voz. |
+
+`quiz.site_variant` identifica a origem: `audio_preview_whatsapp` para a versão que entrega os áudios da prévia e `lyric_preview_whatsapp` para a versão que gera a música no miniflux. Se o modo for `deliver_existing_preview_audio`, o miniflux deve exigir exatamente duas URLs em `preview.audios`; se não houver duas, deve interromper e registrar erro em vez de gerar outra música.
 
 ## O que o miniflux deve conferir
 
