@@ -65,9 +65,11 @@ O miniflux deve aceitar `POST /api/webhooks/payment`, validar o cabeçalho `x-pa
     "name": "nome do cliente",
     "phone": "55DDDNUMERO"
   },
+  "lyric_text": "letra exata aprovada pelo cliente",
   "quiz": {
     "recipient": "relação escolhida",
     "style": "estilo musical",
+    "music_style": "estilo musical",
     "voice_gender": "m ou f",
     "honoree": "nome do homenageado",
     "story": "história enviada",
@@ -87,6 +89,8 @@ O miniflux deve aceitar `POST /api/webhooks/payment`, validar o cabeçalho `x-pa
   "story": "história enviada"
 }
 ```
+
+`quiz.music_style` é o campo de gênero musical a ser usado pelo miniflux. `quiz.voice_gender` recebe `m` ou `f`. `lyric_text` contém a letra exata aprovada pelo cliente e deve ser enviada à Kie como prompt; não use apenas `story` quando `lyric_text` estiver disponível.
 
 `preview.audios` é o campo principal para o miniflux: contém as duas prévias geradas pela Kie nas versões com prévia em áudio. `quiz.preview_audio_urls` é mantido como cópia de compatibilidade. Nas versões que exibem apenas letra, ambas as listas ficam vazias.
 

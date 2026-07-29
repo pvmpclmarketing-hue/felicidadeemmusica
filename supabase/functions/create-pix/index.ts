@@ -42,10 +42,10 @@ Deno.serve(async (request) => {
     let previewAudioUrls: string[] = [];
     if (input.previewId) {
       const { data: preview } = await supabase.from("audio_previews").select("lyric_text,audio_url,audio_urls").eq("id", input.previewId).single();
-      lyrics = input.deliveryMode === "download" ? preview?.lyric_text ?? lyrics : lyrics;
+      lyrics = preview?.lyric_text ?? lyrics;
       previewAudioUrls = Array.isArray(preview?.audio_urls) && preview.audio_urls.length ? preview.audio_urls.filter((url): url is string => typeof url === "string") : preview?.audio_url ? [preview.audio_url] : [];
     }
-    const quiz = { recipient: input.recipient, style: input.style, voice_gender: input.voiceGender, honoree: input.name.trim(), story: input.story.trim(), preview_id: input.previewId ?? null, preview_audio_urls: previewAudioUrls };
+    const quiz = { recipient: input.recipient, style: input.style, music_style: input.style, voice_gender: input.voiceGender, honoree: input.name.trim(), story: input.story.trim(), preview_id: input.previewId ?? null, preview_audio_urls: previewAudioUrls };
     if (input.deliveryMode === "download" && !lyrics) return fail("Não foi possível localizar a letra desta prévia.");
     const { data: order, error: orderError } = await supabase.from("orders").insert({ recipient: input.recipient, style: input.style, honoree: input.name.trim(), story: input.story.trim(), lyric_text: lyrics, buyer_name: input.buyerName.trim(), buyer_phone: phone, amount_cents: amountCents, quiz_data: quiz, delivery_mode: input.deliveryMode === "download" ? "download" : "whatsapp" }).select("id").single();
     if (orderError || !order) throw new Error("Não foi possível registrar o pedido.");
