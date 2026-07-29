@@ -69,11 +69,18 @@ O miniflux deve aceitar `POST /api/webhooks/payment`, validar o cabeçalho `x-pa
     "style": "estilo musical",
     "voice_gender": "m ou f",
     "honoree": "nome do homenageado",
-    "story": "história enviada"
+    "story": "história enviada",
+    "preview_id": "uuid-da-prévia-ou-null",
+    "preview_audio_urls": [
+      "https://url-da-primeira-prévia",
+      "https://url-da-segunda-prévia"
+    ]
   },
   "story": "história enviada"
 }
 ```
+
+`preview_audio_urls` contém as duas prévias geradas pela Kie nas versões com prévia em áudio. Nas versões que exibem apenas letra, esse campo será uma lista vazia.
 
 ## O que o miniflux deve conferir
 
@@ -101,4 +108,3 @@ O miniflux deve aceitar `POST /api/webhooks/payment`, validar o cabeçalho `x-pa
 - **Asaas recebeu, mas pedido continua `awaiting_payment`:** webhook do Asaas não está configurado, está com token diferente, fila interrompida ou evento `PAYMENT_RECEIVED` não foi selecionado.
 - **Pedido ficou `paid`, mas WhatsApp não disparou:** verificar `WHATSENTREGAVEL_URL`, `WHATSENTREGAVEL_INTEGRATION_KEY`, `WHATSENTREGAVEL_PAYMENT_SECRET`, rota do miniflux e `outbound_notifications`.
 - **Tela não muda após pagamento, mas pedido está `paid`:** verificar se `get-payment-status` está publicado e se o navegador está na versão atual do site.
-

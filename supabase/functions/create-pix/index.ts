@@ -38,9 +38,14 @@ Deno.serve(async (request) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const amountCents = Number(Deno.env.get("MUSIC_PRICE_CENTS") ?? "1990");
     if (!Number.isInteger(amountCents) || amountCents < 100) throw new Error("Valor da música não foi configurado corretamente.");
-    const quiz = { recipient: input.recipient, style: input.style, voice_gender: input.voiceGender, honoree: input.name.trim(), story: input.story.trim() };
     let lyrics = input.lyricText?.trim() || null;
-    if (input.deliveryMode === "download" && input.previewId) { const { data: preview } = await supabase.from("audio_previews").select("lyric_text").eq("id", input.previewId).single(); lyrics = preview?.lyric_text ?? lyrics; }
+    let previewAudioUrls: string[] = [];
+    if (input.previewId) {
+      const { data: preview } = await supabase.from("audio_previews").select("lyric_text,audio_url,audio_urls").eq("id", input.previewId).single();
+      lyrics = input.deliveryMode === "download" ? preview?.lyric_text ?? lyrics : lyrics;
+      previewAudioUrls = Array.isArray(preview?.audio_urls) && preview.audio_urls.length ? preview.audio_urls.filter((url): url is string => typeof url === "string") : preview?.audio_url ? [preview.audio_url] : [];
+    }
+    const quiz = { recipient: input.recipient, style: input.style, voice_gender: input.voiceGender, honoree: input.name.trim(), story: input.story.trim(), preview_id: input.previewId ?? null, preview_audio_urls: previewAudioUrls };
     if (input.deliveryMode === "download" && !lyrics) return fail("Não foi possível localizar a letra desta prévia.");
     const { data: order, error: orderError } = await supabase.from("orders").insert({ recipient: input.recipient, style: input.style, honoree: input.name.trim(), story: input.story.trim(), lyric_text: lyrics, buyer_name: input.buyerName.trim(), buyer_phone: phone, amount_cents: amountCents, quiz_data: quiz, delivery_mode: input.deliveryMode === "download" ? "download" : "whatsapp" }).select("id").single();
     if (orderError || !order) throw new Error("Não foi possível registrar o pedido.");
