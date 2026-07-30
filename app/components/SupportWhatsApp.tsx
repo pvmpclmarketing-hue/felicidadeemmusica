@@ -1,4 +1,4 @@
-const configuredPhone = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? "5522998951446";
+const configuredPhone = "5522992885365";
 const supportPhone = configuredPhone.replace(/\D/g, "");
 const supportUrl = `https://wa.me/${supportPhone}?text=${encodeURIComponent("Olá! Preciso de ajuda com a minha música personalizada.")}`;
 
