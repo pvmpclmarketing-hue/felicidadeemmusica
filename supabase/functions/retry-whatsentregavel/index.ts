@@ -4,10 +4,13 @@ Deno.serve(async (request) => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
   if (!Deno.env.get("RETRY_WEBHOOK_SECRET") || request.headers.get("x-retry-secret") !== Deno.env.get("RETRY_WEBHOOK_SECRET")) return new Response("Unauthorized", { status: 401 });
 
+  const { eventKey } = await request.json().catch(() => ({})) as { eventKey?: string };
   const baseUrl = Deno.env.get("WHATSENTREGAVEL_URL");
   if (!baseUrl) return Response.json({ error: "WhatsEntregavel não configurado." }, { status: 503 });
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const { data: notifications, error } = await supabase.from("outbound_notifications").select("id, path, secret_header, payload, attempts").in("status", ["pending", "failed"]).order("created_at").limit(20);
+  let query = supabase.from("outbound_notifications").select("id, path, secret_header, payload, attempts").in("status", ["pending", "failed"]).order("created_at").limit(20);
+  if (eventKey) query = query.eq("event_key", eventKey);
+  const { data: notifications, error } = await query;
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
   let sent = 0;
