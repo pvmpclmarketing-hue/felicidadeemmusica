@@ -16,8 +16,27 @@ Deno.serve(async (request) => {
     const { orderId } = await request.json() as { orderId?: string };
     if (!orderId) return new Response(JSON.stringify({ error: "Pedido inválido." }), { status: 400, headers });
     const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data, error } = await db.from("orders").select("status").eq("id", orderId).single();
+    const { data, error } = await db.from("orders").select("status, asaas_static_qr_id").eq("id", orderId).single();
     if (error || !data) return new Response(JSON.stringify({ error: "Pedido não encontrado." }), { status: 404, headers });
+    // Reserva caso o Webhook do Asaas atrase: consulta o QR estático e usa o mesmo processamento.
+    if (data.status === "awaiting_payment" && data.asaas_static_qr_id) {
+      const asaasKey = Deno.env.get("ASAAS_API_KEY");
+      const asaasUrl = Deno.env.get("ASAAS_API_URL") ?? "https://api.asaas.com/v3";
+      if (asaasKey) {
+        const response = await fetch(`${asaasUrl}/payments?pixQrCodeId=${encodeURIComponent(data.asaas_static_qr_id)}&limit=10`, { headers: { access_token: asaasKey } });
+        const result = await response.json() as { data?: Array<{ id?: string; status?: string; pixQrCodeId?: string }> };
+        const payment = result.data?.find((item) => ["RECEIVED", "CONFIRMED"].includes(item.status ?? ""));
+        if (payment?.id) {
+          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/asaas-webhook`, {
+            method: "POST",
+            headers: { "content-type": "application/json", "asaas-access-token": Deno.env.get("ASAAS_WEBHOOK_TOKEN") ?? "" },
+            body: JSON.stringify({ id: `poll:${payment.id}`, event: "PAYMENT_RECEIVED", payment: { id: payment.id, pixQrCodeId: payment.pixQrCodeId ?? data.asaas_static_qr_id } }),
+          });
+          const refreshed = await db.from("orders").select("status").eq("id", orderId).single();
+          return new Response(JSON.stringify({ status: refreshed.data?.status ?? "paid" }), { headers });
+        }
+      }
+    }
     return new Response(JSON.stringify({ status: data.status }), { headers });
   } catch {
     return new Response(JSON.stringify({ error: "Não foi possível consultar o pagamento." }), { status: 500, headers });
