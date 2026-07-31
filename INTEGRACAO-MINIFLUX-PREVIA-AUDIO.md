@@ -127,7 +127,7 @@ Quando `fulfillment.mode` for `deliver_existing_preview_audio`:
 
 1. Validar o segredo `x-payment-secret`.
 2. Persistir `idempotency_key` **antes** de iniciar qualquer automação.
-3. Exigir exatamente duas URLs em `preview.audios`.
+3. Exigir exatamente duas URLs em `preview.audios`. Cada URL já é uma faixa completa; não usar links alternativos de stream da Kie.
 4. Enviar as duas URLs para o WhatsApp do campo `customer.phone`.
 5. **Não chamar a Kie e não gerar outra música.** Essas são as duas faixas que o cliente já ouviu como prévia.
 6. Retornar `200` ou `204`.
@@ -168,6 +168,6 @@ No Asaas, os eventos obrigatórios são `PAYMENT_RECEIVED` e `PAYMENT_CONFIRMED`
 ## Diagnóstico rápido
 
 - **O cliente pagou, mas o Miniflux não recebeu nada:** verificar primeiro os registros `api_call_logs` e `outbound_notifications` no Supabase; depois os Logs de Webhook do Asaas.
-- **Chegou `PAYMENT_APPROVED`, mas não há duas URLs:** não enviar nem gerar nova música; registrar falha e acionar suporte. A prévia ainda não está completa.
+- **Chegou `PAYMENT_APPROVED`, mas não há exatamente duas URLs:** não enviar nem gerar nova música; registrar falha e acionar suporte. A prévia ainda não está completa.
 - **O mesmo pagamento gerou duas mensagens:** a idempotência por `idempotency_key` não foi aplicada no Miniflux.
 - **O Miniflux devolveu erro:** o Supabase guarda a tentativa em `outbound_notifications` com `status = failed` e `last_error`; o reenvio usa a mesma chave de idempotência.
