@@ -1,10 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withApiMonitoring } from "../_shared/api-observability.ts";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Content-Type": "application/json; charset=utf-8" };
 const fail = (error: string, status = 400) => new Response(JSON.stringify({ error }), { status, headers: corsHeaders });
 const hash = async (value: string) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)))).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 
-Deno.serve(async (request) => {
+Deno.serve((request) => withApiMonitoring("generate-audio-preview", request, async () => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return fail("Método não permitido.", 405);
   try {
@@ -36,4 +37,4 @@ Deno.serve(async (request) => {
     await supabase.from("audio_previews").update({ kie_task_id: taskId }).eq("id", preview.id);
     return new Response(JSON.stringify({ previewId: preview.id }), { headers: corsHeaders });
   } catch (error) { return fail(error instanceof Error ? error.message : "Falha ao criar a prévia.", 500); }
-});
+}));

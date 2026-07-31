@@ -1,3 +1,5 @@
+import { withApiMonitoring } from "../_shared/api-observability.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -18,7 +20,7 @@ Preserve uma linguagem natural e identifique corretamente nomes de pessoas, empr
 
 Escreva números adequadamente ao contexto, mantendo telefones, documentos e códigos claramente separados. Entregue somente a transcrição final revisada, em português brasileiro, pronta para ser usada. Prioridade máxima: fidelidade ao áudio, depois clareza e correção gramatical. Nunca invente palavras.`;
 
-Deno.serve(async (request) => {
+Deno.serve((request) => withApiMonitoring("transcribe-story-audio", request, async () => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return fail("Método não permitido.", 405);
 
@@ -48,4 +50,4 @@ Deno.serve(async (request) => {
   } catch (cause) {
     return fail(cause instanceof Error ? cause.message : "Falha ao transcrever o áudio.", 500);
   }
-});
+}));

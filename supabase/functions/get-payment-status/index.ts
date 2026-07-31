@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withApiMonitoring } from "../_shared/api-observability.ts";
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -7,7 +8,7 @@ const headers = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
-Deno.serve(async (request) => {
+Deno.serve((request) => withApiMonitoring("get-payment-status", request, async () => {
   if (request.method === "OPTIONS") return new Response("ok", { headers });
   if (request.method !== "POST") return new Response(JSON.stringify({ error: "Método não permitido." }), { status: 405, headers });
 
@@ -41,4 +42,4 @@ Deno.serve(async (request) => {
     console.error("get-payment-status", error);
     return new Response(JSON.stringify({ error: "Não foi possível consultar o pagamento." }), { status: 500, headers });
   }
-});
+}));

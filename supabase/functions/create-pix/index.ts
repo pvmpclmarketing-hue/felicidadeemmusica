@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withApiMonitoring } from "../_shared/api-observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,7 +27,7 @@ async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, 
   }
 }
 
-Deno.serve(async (request) => {
+Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return fail("Método não permitido.", 405);
   try {
@@ -70,4 +71,4 @@ Deno.serve(async (request) => {
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Falha ao gerar o Pix.", 500);
   }
-});
+}));

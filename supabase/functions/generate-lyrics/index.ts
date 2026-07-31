@@ -1,9 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withApiMonitoring } from "../_shared/api-observability.ts";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Content-Type": "application/json; charset=utf-8" };
 const fail = (error: string, status = 400) => new Response(JSON.stringify({ error }), { status, headers: corsHeaders });
 
-Deno.serve(async (request) => {
+Deno.serve((request) => withApiMonitoring("generate-lyrics", request, async () => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return fail("Método não permitido.", 405);
 
@@ -44,4 +45,4 @@ Responda somente com a letra pronta, sem explicação, introdução ou comentár
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Falha ao criar a prévia.", 500);
   }
-});
+}));

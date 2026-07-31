@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withApiMonitoring } from "../_shared/api-observability.ts";
 
-Deno.serve(async (request) => {
+Deno.serve((request) => withApiMonitoring("retry-whatsentregavel", request, async () => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
   if (!Deno.env.get("RETRY_WEBHOOK_SECRET") || request.headers.get("x-retry-secret") !== Deno.env.get("RETRY_WEBHOOK_SECRET")) return new Response("Unauthorized", { status: 401 });
 
@@ -27,4 +28,4 @@ Deno.serve(async (request) => {
     }
   }
   return Response.json({ processed: notifications?.length ?? 0, sent });
-});
+}));

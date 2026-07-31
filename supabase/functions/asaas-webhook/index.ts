@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { trackMetaPurchase } from "./meta.ts";
+import { withApiMonitoring } from "../_shared/api-observability.ts";
 
 async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, order: Record<string, unknown>) {
   const baseUrl = Deno.env.get("WHATSENTREGAVEL_URL");
@@ -33,7 +34,7 @@ async function startDirectDelivery(supabase: ReturnType<typeof createClient>, or
   await supabase.from("orders").update({ kie_task_id: payload.data.taskId }).eq("id", order.id);
 }
 
-Deno.serve(async (request) => {
+Deno.serve((request) => withApiMonitoring("asaas-webhook", request, async () => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
   if (Deno.env.get("ASAAS_WEBHOOK_TOKEN") && request.headers.get("asaas-access-token") !== Deno.env.get("ASAAS_WEBHOOK_TOKEN")) return new Response("Unauthorized", { status: 401 });
   try {
@@ -56,6 +57,9 @@ Deno.serve(async (request) => {
     return Response.json({ received: true });
   } catch (error) {
     console.error(error);
-    return Response.json({ received: true });
+    return Response.json(
+      { received: true },
+      { headers: { "x-api-monitor-error": error instanceof Error ? error.message.slice(0, 900) : "Falha desconhecida no webhook Asaas" } },
+    );
   }
-});
+}));
