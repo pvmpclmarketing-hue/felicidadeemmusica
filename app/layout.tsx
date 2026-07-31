@@ -14,6 +14,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://musica.memberproduto.shop"),
   title: "Felicidade em Música | Sua história vira canção",
   description: "Transforme momentos especiais em uma música personalizada e inesquecível.",
   openGraph: { title: "Felicidade em Música", description: "Sua história vira música — 2 versões por R$ 19,90." },
