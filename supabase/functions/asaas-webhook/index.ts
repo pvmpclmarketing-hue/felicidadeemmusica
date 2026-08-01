@@ -34,6 +34,14 @@ async function startDirectDelivery(supabase: ReturnType<typeof createClient>, or
   await supabase.from("orders").update({ kie_task_id: payload.data.taskId }).eq("id", order.id);
 }
 
+async function releaseExistingPreview(supabase: ReturnType<typeof createClient>, order: Record<string, unknown>) {
+  const quiz = (order.quiz_data ?? {}) as Record<string, unknown>;
+  const urls = [...new Set((Array.isArray(quiz.preview_audio_urls) ? quiz.preview_audio_urls : []).filter((url): url is string => typeof url === "string" && url.length > 0))].slice(0, 2);
+  if (urls.length < 2) return false;
+  await supabase.from("orders").update({ status: "ready", music_url: urls[0], music_versions: urls }).eq("id", order.id);
+  return true;
+}
+
 Deno.serve((request) => withApiMonitoring("asaas-webhook", request, async () => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
   if (Deno.env.get("ASAAS_WEBHOOK_TOKEN") && request.headers.get("asaas-access-token") !== Deno.env.get("ASAAS_WEBHOOK_TOKEN")) return new Response("Unauthorized", { status: 401 });
@@ -53,7 +61,10 @@ Deno.serve((request) => withApiMonitoring("asaas-webhook", request, async () => 
     const { data: order } = await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), asaas_payment_id: event.payment.id }).eq("id", pendingOrder.id).eq("status", "awaiting_payment").select("*").maybeSingle();
     if (!order) return Response.json({ received: true });
     await trackMetaPurchase(order, request);
-    if (order.delivery_mode === "download") await startDirectDelivery(supabase, order); else await notifyWhatsEntregavel(supabase, order);
+    if (order.delivery_mode === "download") {
+      const released = await releaseExistingPreview(supabase, order);
+      if (!released) await startDirectDelivery(supabase, order);
+    } else await notifyWhatsEntregavel(supabase, order);
     return Response.json({ received: true });
   } catch (error) {
     console.error(error);
