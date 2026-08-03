@@ -25,12 +25,13 @@ Leia este documento antes de alterar o template. O projeto usa Next.js na Vercel
 
 ### Gatilho de pagamento para WhatsEntregavel
 
-Somente as versões 1 e 2 entregam por WhatsApp. Quando o Asaas aprova o Pix, `asaas-webhook` envia `PAYMENT_APPROVED` ao endpoint do WhatsEntregavel com `integration_key`, `idempotency_key` e o campo obrigatório `fulfillment.mode`:
+Todas as seis versões registram `PAYMENT_APPROVED` no endpoint do WhatsEntregavel com `integration_key`, `idempotency_key` e o campo obrigatório `fulfillment.mode`. Nas versões 5 e 6, isso acontece depois de o comprovante ser aprovado:
 
 | Versão | `fulfillment.mode` | Ação no WhatsEntregavel |
 | --- | --- | --- |
 | 1 (prévia de letra) | `generate_music_in_miniflux` | Gerar a faixa a partir de `lyric_text`, `quiz.music_style` e `quiz.voice_gender`; depois enviar. |
 | 2 (prévia em áudio) | `deliver_existing_preview_audio` | Enviar exatamente as duas URLs em `preview.audios`; nunca gerar nova faixa. |
+| 3, 4, 5 e 6 (entrega no site) | `site_delivery` | Registrar o pagamento e encerrar o fluxo. Não gerar, não enviar no WhatsApp e não duplicar a entrega do site. |
 
 Não remova esse campo nem use um gatilho genérico. O receptor resolve o WhatsApp da conta por `integration_key`; nunca envie `connection_id`. Para o contrato completo, consulte `MODIFICACAO_SITE_GATILHOS_PAGAMENTO.md`.
 

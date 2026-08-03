@@ -42,7 +42,7 @@ Cadastre em **Project Settings → Edge Functions → Secrets**. Nunca coloque e
 
 Para entrega por WhatsApp nas versões 1 e 2, configure também `WHATSENTREGAVEL_URL`, `WHATSENTREGAVEL_INTEGRATION_KEY`, `WHATSENTREGAVEL_SITE_SECRET` e `WHATSENTREGAVEL_PAYMENT_SECRET`.
 
-O `WHATSENTREGAVEL_INTEGRATION_KEY` é a chave fixa exibida no painel do WhatsEntregavel em **Conexões → Integração do seu site**. Não use `connection_id` no site. Após pagamento aprovado, o sistema envia automaticamente `fulfillment.mode`: na versão 1 ele pede geração no Miniflux; na versão 2 entrega as duas URLs já prontas da prévia. Veja `MODIFICACAO_SITE_GATILHOS_PAGAMENTO.md` antes de configurar os dois fluxos no painel.
+O `WHATSENTREGAVEL_INTEGRATION_KEY` é a chave fixa exibida no painel do WhatsEntregavel em **Conexões → Integração do seu site**. Não use `connection_id` no site. Todas as seis versões disparam `PAYMENT_APPROVED`: a versão 1 pede geração no Miniflux; a versão 2 entrega as duas URLs já prontas; as versões 3 a 6 enviam `site_delivery` apenas para registro, pois a entrega continua no site. Veja `MODIFICACAO_SITE_GATILHOS_PAGAMENTO.md` antes de configurar os fluxos no painel.
 
 ## 4. Configurar o Asaas
 

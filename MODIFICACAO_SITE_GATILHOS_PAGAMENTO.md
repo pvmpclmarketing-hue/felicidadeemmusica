@@ -23,6 +23,7 @@ Todo `PAYMENT_APPROVED` precisa ter um destes valores:
 | --- | --- | --- |
 | `deliver_existing_preview_audio` | Versão 2: o comprador ouviu duas prévias geradas no site | Enviar exatamente as duas URLs de `preview.audios`. Não chamar Kie. |
 | `generate_music_in_miniflux` | Versão 1: há letra aprovada, sem áudio pronto | Gerar a música no fluxo usando `lyric_text`, `quiz.music_style` e `quiz.voice_gender`. |
+| `site_delivery` | Versões 3, 4, 5 e 6 | Registrar o pagamento e encerrar o fluxo no WhatsEntregavel. O site continua responsável por gerar/liberar/download. |
 
 ## Exemplo: duas faixas já prontas
 
@@ -54,9 +55,20 @@ Todo `PAYMENT_APPROVED` precisa ter um destes valores:
 }
 ```
 
+## Cobertura obrigatória das versões
+
+| Versão | Momento do gatilho | `fulfillment.mode` | Quem entrega |
+| --- | --- | --- | --- |
+| 1 | Asaas aprova Pix | `generate_music_in_miniflux` | WhatsEntregavel |
+| 2 | Asaas aprova Pix | `deliver_existing_preview_audio` | WhatsEntregavel |
+| 3 | Asaas aprova Pix | `site_delivery` | Site |
+| 4 | Asaas aprova Pix | `site_delivery` | Site |
+| 5 | Comprovante Pix é aprovado | `site_delivery` | Site |
+| 6 | Comprovante Pix é aprovado | `site_delivery` | Site |
+
 ## Regras de segurança
 
 - Salve `idempotency_key` antes de iniciar qualquer envio ou geração; se ele se repetir, responda sucesso sem duplicar a entrega.
 - Para `deliver_existing_preview_audio`, exija exatamente duas URLs públicas MP3 em `preview.audios`.
 - Para `generate_music_in_miniflux`, exija `lyric_text`, `quiz.music_style` e `quiz.voice_gender` (`m` ou `f`).
-- As versões 3 a 6 entregam pelo próprio site e não devem acionar este webhook.
+- `site_delivery` também é um pagamento aprovado válido: registre-o e retorne sucesso, mas não envie WhatsApp nem inicie uma nova geração. Isso evita duplicidade nas versões que entregam pelo site.
