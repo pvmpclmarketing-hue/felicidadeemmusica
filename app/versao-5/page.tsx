@@ -1,2 +1,2 @@
-import VersaoDois from "../versao-2/page";
-export default function VersaoCinco(){return <VersaoDois directDownload manualPayment/>}
+import Home from "../page";
+export default function VersaoCinco(){return <Home directDownload manualPayment/>}
