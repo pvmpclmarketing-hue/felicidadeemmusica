@@ -42,6 +42,11 @@ async function releaseExistingPreview(supabase: ReturnType<typeof createClient>,
   return true;
 }
 
+function isAudioPreviewDownload(order: Record<string, unknown>) {
+  const quiz = (order.quiz_data ?? {}) as Record<string, unknown>;
+  return quiz.site_variant === "audio_preview_download" || quiz.fulfillment_mode === "deliver_existing_preview_audio";
+}
+
 Deno.serve((request) => withApiMonitoring("asaas-webhook", request, async () => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
   if (Deno.env.get("ASAAS_WEBHOOK_TOKEN") && request.headers.get("asaas-access-token") !== Deno.env.get("ASAAS_WEBHOOK_TOKEN")) return new Response("Unauthorized", { status: 401 });
@@ -63,7 +68,9 @@ Deno.serve((request) => withApiMonitoring("asaas-webhook", request, async () => 
     await trackMetaPurchase(order, request);
     if (order.delivery_mode === "download") {
       const released = await releaseExistingPreview(supabase, order);
-      if (!released) await startDirectDelivery(supabase, order);
+      if (!released && isAudioPreviewDownload(order)) {
+        await supabase.from("orders").update({ status: "delivery_failed" }).eq("id", order.id);
+      } else if (!released) await startDirectDelivery(supabase, order);
     } else await notifyWhatsEntregavel(supabase, order);
     return Response.json({ received: true });
   } catch (error) {
