@@ -1,9 +1,8 @@
-const configuredPhone = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? "";
+const configuredPhone = "5522992885365";
 const supportPhone = configuredPhone.replace(/\D/g, "");
 const supportUrl = `https://wa.me/${supportPhone}?text=${encodeURIComponent("Olá! Preciso de ajuda com a minha música personalizada.")}`;
 
 export function SupportWhatsApp({ compact = false }: { compact?: boolean }) {
-  if (!supportPhone) return null;
   return <section className={`support-whatsapp${compact ? " support-whatsapp-compact" : ""}`}>
       <p>PRECISA DE AJUDA?</p>
       <a href={supportUrl} target="_blank" rel="noreferrer">💬 Chamar no WhatsApp</a>

@@ -27,7 +27,7 @@ Conclusão: o pagamento chegou ao Asaas, porém o Asaas não enviou — ou não 
 
 Criar ou revisar um webhook de cobranças com:
 
-- **URL:** `https://SEU_PROJECT_REF.supabase.co/functions/v1/asaas-webhook`
+- **URL:** `https://mywafaatlssiphxecuej.supabase.co/functions/v1/asaas-webhook`
 - **Status:** ativo
 - **Fila de sincronização:** ativa
 - **Eventos:** `PAYMENT_RECEIVED` e `PAYMENT_CONFIRMED`
