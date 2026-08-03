@@ -10,9 +10,8 @@ async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, 
   const eventKey = `payment:${order.id}`;
   const quiz = (order.quiz_data ?? { recipient: order.recipient, style: order.style, honoree: order.honoree, story: order.story }) as Record<string, unknown>;
   const previewAudios = Array.isArray(quiz.preview_audio_urls) ? quiz.preview_audio_urls.filter((url: unknown): url is string => typeof url === "string") : [];
-  const siteDelivery = order.delivery_mode === "download";
-  const fulfillmentMode = siteDelivery ? "site_delivery" : quiz.fulfillment_mode === "deliver_existing_preview_audio" && previewAudios.length >= 2 ? "deliver_existing_preview_audio" : "generate_music_in_miniflux";
-  const payload = { event: "PAYMENT_APPROVED", idempotency_key: eventKey, integration_key: integrationKey, order_id: order.id, customer: { name: order.buyer_name, phone: `55${order.buyer_phone}` }, quiz, fulfillment: { mode: fulfillmentMode }, delivery: { channel: siteDelivery ? "site" : "whatsapp" }, lyric_text: typeof order.lyric_text === "string" ? order.lyric_text : null, preview: { id: typeof quiz.preview_id === "string" ? quiz.preview_id : null, audios: previewAudios }, story: order.story };
+  const fulfillmentMode = quiz.fulfillment_mode === "deliver_existing_preview_audio" && previewAudios.length >= 2 ? "deliver_existing_preview_audio" : "generate_music_in_miniflux";
+  const payload = { event: "PAYMENT_APPROVED", idempotency_key: eventKey, integration_key: integrationKey, order_id: order.id, customer: { name: order.buyer_name, phone: `55${order.buyer_phone}` }, quiz, fulfillment: { mode: fulfillmentMode }, lyric_text: typeof order.lyric_text === "string" ? order.lyric_text : null, preview: { id: typeof quiz.preview_id === "string" ? quiz.preview_id : null, audios: previewAudios }, story: order.story };
   const { data: notification, error: insertError } = await supabase.from("outbound_notifications").upsert({ provider: "whatsentregavel", event_key: eventKey, path: "/api/webhooks/payment", secret_header: "x-payment-secret", payload, status: "pending" }, { onConflict: "event_key", ignoreDuplicates: true }).select("id, status, attempts").maybeSingle();
   if (insertError || !notification || notification.status === "sent") return;
   try {
@@ -62,11 +61,10 @@ Deno.serve((request) => withApiMonitoring("asaas-webhook", request, async () => 
     const { data: order } = await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), asaas_payment_id: event.payment.id }).eq("id", pendingOrder.id).eq("status", "awaiting_payment").select("*").maybeSingle();
     if (!order) return Response.json({ received: true });
     await trackMetaPurchase(order, request);
-    await notifyWhatsEntregavel(supabase, order);
     if (order.delivery_mode === "download") {
       const released = await releaseExistingPreview(supabase, order);
       if (!released) await startDirectDelivery(supabase, order);
-    }
+    } else await notifyWhatsEntregavel(supabase, order);
     return Response.json({ received: true });
   } catch (error) {
     console.error(error);
