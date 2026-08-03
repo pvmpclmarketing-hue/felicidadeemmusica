@@ -6,9 +6,9 @@ Este documento descreve **somente** as versões que criam duas prévias em áudi
 
 | Versão | Link | Entrega após pagamento | O Miniflux participa? |
 | --- | --- | --- | --- |
-| Prévia em áudio + WhatsApp | `https://musica.memberproduto.shop/versao-2` | Envia ao cliente as duas músicas já criadas na prévia | **Sim** |
-| Prévia em áudio + download | `https://musica.memberproduto.shop/versao-4` | Libera download diretamente no site | Não |
-| Prévia em áudio + comprovante + download | `https://musica.memberproduto.shop/versao-5` | Confere comprovante e libera download no site | Não |
+| Prévia em áudio + WhatsApp | `https://DOMINIO-DO-CLIENTE/versao-2` | Envia ao cliente as duas músicas já criadas na prévia | **Sim** |
+| Prévia em áudio + download | `https://DOMINIO-DO-CLIENTE/versao-4` | Libera download diretamente no site | Não |
+| Prévia em áudio + comprovante + download | `https://DOMINIO-DO-CLIENTE/versao-5` | Confere comprovante e libera no site as mesmas duas faixas completas da prévia | Não |
 
 O Miniflux deve tratar apenas a **versão 2**. Nas versões 4 e 5, o Supabase entrega no próprio site; não deve haver geração ou envio por WhatsApp pelo Miniflux.
 
@@ -151,8 +151,8 @@ Estes endpoints são apenas referência para diagnóstico e devem permanecer con
 
 | Origem | Destino | Papel |
 | --- | --- | --- |
-| Asaas | `https://mywafaatlssiphxecuej.supabase.co/functions/v1/asaas-webhook` | Confirma pagamento Pix e dispara `PAYMENT_APPROVED`. |
-| Kie | `https://mywafaatlssiphxecuej.supabase.co/functions/v1/kie-preview-webhook?secret={KIE_CALLBACK_SECRET}` | Salva as duas URLs de prévia antes do checkout. |
+| Asaas | `https://SEU_PROJECT_REF.supabase.co/functions/v1/asaas-webhook` | Confirma pagamento Pix e dispara `PAYMENT_APPROVED`. |
+| Kie | `https://SEU_PROJECT_REF.supabase.co/functions/v1/kie-preview-webhook?secret={KIE_CALLBACK_SECRET}` | Salva as duas URLs de prévia antes do checkout. |
 
 No Asaas, os eventos obrigatórios são `PAYMENT_RECEIVED` e `PAYMENT_CONFIRMED`. O token configurado no Asaas deve ser igual ao Secret `ASAAS_WEBHOOK_TOKEN` do Supabase.
 
