@@ -14,11 +14,11 @@ Deno.serve((request) => withApiMonitoring("generate-audio-preview", request, asy
     const openAiKey = Deno.env.get("OPENAI_API_KEY"), kieKey = Deno.env.get("KIE_API_KEY"), callbackSecret = Deno.env.get("KIE_CALLBACK_SECRET"), rateSalt = Deno.env.get("PREVIEW_RATE_LIMIT_SALT");
     if (!openAiKey || !kieKey || !callbackSecret || !rateSalt) return fail("A prévia em música ainda não foi configurada.", 503);
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-    const fingerprint = await hash(`${rateSalt}:${ip}`);
+    const fingerprint = await hash(`${rateSalt}:${ip}:${input.recipient.trim().toLowerCase()}:${input.style.trim().toLowerCase()}:${input.voiceGender}:${input.honoree.trim().toLowerCase()}:${input.story.trim().replace(/\s+/g, " ").toLowerCase()}`);
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: recent } = await supabase.from("audio_previews").select("id").eq("request_fingerprint", fingerprint).gte("created_at", since).limit(1);
-    if (recent?.length) return fail("Você já pediu uma prévia hoje. Aguarde a sua música ficar pronta.", 429);
+    const { data: recent } = await supabase.from("audio_previews").select("id").eq("request_fingerprint", fingerprint).gte("created_at", since).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (recent?.id) return new Response(JSON.stringify({ previewId: recent.id, reused: true }), { headers: corsHeaders });
 
     const instructions = `Você é um compositor profissional especializado em músicas emocionantes e personalizadas. Transforme a história real em uma letra única. O nome do homenageado deve aparecer naturalmente pelo menos duas vezes. Use detalhes específicos da história, não invente fatos e evite clichês. Estruture em [Verso 1], [Pré-refrão] opcional, [Refrão], [Verso 2], [Ponte] e [Refrão Final]. Responda somente com a letra pronta.`;
     const prompt = `NOME: ${input.honoree.trim()}\nRELAÇÃO: ${input.recipient}\nESTILO: ${input.style}\nVOZ: ${input.voiceGender === "f" ? "feminina" : "masculina"}\nHISTÓRIA:\n${input.story.trim()}`;
