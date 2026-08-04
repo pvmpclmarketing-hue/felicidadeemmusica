@@ -36,7 +36,16 @@ async function startDirectDelivery(supabase: ReturnType<typeof createClient>, or
 
 async function releaseExistingPreview(supabase: ReturnType<typeof createClient>, order: Record<string, unknown>) {
   const quiz = (order.quiz_data ?? {}) as Record<string, unknown>;
-  const urls = [...new Set((Array.isArray(quiz.preview_audio_urls) ? quiz.preview_audio_urls : []).filter((url): url is string => typeof url === "string" && url.length > 0))].slice(0, 2);
+  const candidates = [
+    ...(Array.isArray(order.music_versions) ? order.music_versions : []),
+    ...(Array.isArray(quiz.preview_audio_urls) ? quiz.preview_audio_urls : []),
+  ];
+  if (candidates.length < 2 && typeof quiz.preview_id === "string") {
+    const { data: preview } = await supabase.from("audio_previews").select("audio_url,audio_urls").eq("id", quiz.preview_id).maybeSingle();
+    if (Array.isArray(preview?.audio_urls)) candidates.push(...preview.audio_urls);
+    else if (preview?.audio_url) candidates.push(preview.audio_url);
+  }
+  const urls = [...new Set(candidates.filter((url): url is string => typeof url === "string" && url.length > 0))].slice(0, 2);
   if (urls.length < 2) return false;
   await supabase.from("orders").update({ status: "ready", music_url: urls[0], music_versions: urls }).eq("id", order.id);
   return true;
