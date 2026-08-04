@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { trackInitiateCheckout } from "./lib/analytics";
+import { trackInitiateCheckout, trackPurchase } from "./lib/analytics";
 import { StoryTestimonials, SupportWhatsApp } from "./components/SupportWhatsApp";
 import { PixQrCard } from "./components/PixQrCard";
 import { AudioStoryRecorder } from "./components/AudioStoryRecorder";
@@ -27,6 +27,7 @@ export default function Home({directDownload=false,manualPayment=false}:{directD
   const set = (key: keyof Form, value: string) => setForm(data => ({ ...data, [key]: value }));
   useEffect(()=>{try{const raw=localStorage.getItem(savedLyricKey);if(!raw)return;const saved=JSON.parse(raw) as SavedLyric;if(Date.now()-saved.createdAt<86_400_000&&saved.lyrics)setSavedLyric(saved);else localStorage.removeItem(savedLyricKey)}catch{localStorage.removeItem(savedLyricKey)}},[]);
   useEffect(()=>{if(manualPayment||!pix?.orderId||paymentApproved)return;let active=true;const check=async()=>{try{const baseUrl=process.env.NEXT_PUBLIC_SUPABASE_URL;const publishableKey=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY??process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;if(!baseUrl||!publishableKey)return;const response=await fetch(`${baseUrl}/functions/v1/get-payment-status`,{method:"POST",headers:{"content-type":"application/json",apikey:publishableKey,Authorization:`Bearer ${publishableKey}`},body:JSON.stringify({orderId:pix.orderId})});const data=await response.json() as {status?:string};if(active&&["paid","generating","ready"].includes(data.status??""))setPaymentApproved(true)}catch{}};void check();const timer=window.setInterval(()=>void check(),3000);return()=>{active=false;window.clearInterval(timer)}},[pix?.orderId,manualPayment,paymentApproved]);
+  useEffect(()=>{if(paymentApproved&&pix?.orderId)trackPurchase(pix.orderId)},[paymentApproved,pix?.orderId]);
   useEffect(()=>{const handle=(event:MouseEvent)=>{const button=(event.target as Element | null)?.closest<HTMLButtonElement>("button");if(!button||button.textContent!=="Copiar código Pix")return;button.textContent="✓ Copiado!";button.classList.add("copied");window.setTimeout(()=>{button.textContent="Copiar código Pix";button.classList.remove("copied")},1800)};document.addEventListener("click",handle);return()=>document.removeEventListener("click",handle)},[]);
   const persistLyric=(saved:SavedLyric)=>{localStorage.setItem(savedLyricKey,JSON.stringify(saved));setSavedLyric(saved)};
   const start = () => { if(savedLyric){setForm(savedLyric.form);setLyricText(savedLyric.lyrics);setRevisionUsed(savedLyric.revisionUsed);setView("lyrics")}else setView("quiz"); window.scrollTo({ top: 0, behavior: "smooth" }); };

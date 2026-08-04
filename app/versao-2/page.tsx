@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { trackInitiateCheckout } from "../lib/analytics";
+import { trackInitiateCheckout, trackPurchase } from "../lib/analytics";
 import { StoryTestimonials, SupportWhatsApp } from "../components/SupportWhatsApp";
 import { PixQrCard } from "../components/PixQrCard";
 import { AudioStoryRecorder } from "../components/AudioStoryRecorder";
@@ -36,6 +36,7 @@ export default function VersaoDois({directDownload=false,manualPayment=false}:{d
 
   useEffect(()=>{try{const raw=localStorage.getItem(savedPreviewKey);if(!raw)return;const saved=JSON.parse(raw) as SavedPreview;if(Date.now()-saved.startedAt<86_400_000&&saved.previewId)setSavedPreview(saved);else localStorage.removeItem(savedPreviewKey)}catch{localStorage.removeItem(savedPreviewKey)}},[]);
   useEffect(()=>{if(manualPayment||!pix?.orderId||paymentApproved)return;let active=true;const check=async()=>{try{const data=await edge("get-payment-status",{orderId:pix.orderId});const approved=directDownload?data.status==="ready":["paid","generating","ready"].includes(data.status??"");if(active&&approved)setPaymentApproved(true)}catch{}};void check();const timer=window.setInterval(()=>void check(),3000);return()=>{active=false;window.clearInterval(timer)}},[pix?.orderId,manualPayment,paymentApproved,directDownload]);
+  useEffect(()=>{if(paymentApproved&&pix?.orderId)trackPurchase(pix.orderId)},[paymentApproved,pix?.orderId]);
   useEffect(()=>{const handle=(event:MouseEvent)=>{const button=(event.target as Element | null)?.closest<HTMLButtonElement>("button");if(!button||button.textContent!=="Copiar código Pix")return;button.textContent="✓ Copiado!";button.classList.add("copied");window.setTimeout(()=>{button.textContent="Copiar código Pix";button.classList.remove("copied")},1800)};document.addEventListener("click",handle);return()=>document.removeEventListener("click",handle)},[]);
   const persistPreview=(saved:SavedPreview)=>{localStorage.setItem(savedPreviewKey,JSON.stringify(saved));setSavedPreview(saved)};
   const resumePreview=()=>{if(!savedPreview){setScreen("quiz");return}setForm(savedPreview.form);setRevisionUsed(savedPreview.revisionUsed);setPreviewId(savedPreview.previewId);setGenerationStartedAt(savedPreview.startedAt);setScreen("creating")};

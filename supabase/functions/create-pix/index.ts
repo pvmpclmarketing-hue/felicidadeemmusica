@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withApiMonitoring } from "../_shared/api-observability.ts";
+import { trackMetaInitiateCheckout } from "../_shared/meta.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,8 +53,10 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
     if (input.deliveryMode === "download" && !lyrics) return fail("Não foi possível localizar a letra desta prévia.");
     if (input.deliveryMode === "download" && input.previewId && previewAudioUrls.length < 2) return fail("Ainda não localizamos as duas músicas da prévia. Aguarde a prévia ficar pronta antes de gerar o Pix.", 409);
     const existingVersions = input.deliveryMode === "download" && previewAudioUrls.length >= 2 ? previewAudioUrls : [];
-    const { data: order, error: orderError } = await supabase.from("orders").insert({ recipient: input.recipient, style: input.style, honoree: input.name.trim(), story: input.story.trim(), lyric_text: lyrics, buyer_name: input.buyerName.trim(), buyer_phone: phone, amount_cents: amountCents, quiz_data: quiz, delivery_mode: input.deliveryMode === "download" ? "download" : "whatsapp", music_url: existingVersions[0] ?? null, music_versions: existingVersions }).select("id").single();
+    const { data: order, error: orderError } = await supabase.from("orders").insert({ recipient: input.recipient, style: input.style, honoree: input.name.trim(), story: input.story.trim(), lyric_text: lyrics, buyer_name: input.buyerName.trim(), buyer_phone: phone, amount_cents: amountCents, quiz_data: quiz, delivery_mode: input.deliveryMode === "download" ? "download" : "whatsapp", music_url: existingVersions[0] ?? null, music_versions: existingVersions }).select("id,buyer_phone,amount_cents").single();
     if (orderError || !order) throw new Error("Não foi possível registrar o pedido.");
+
+    await trackMetaInitiateCheckout(order, request);
 
     if (input.deliveryMode !== "download") await notifyWhatsEntregavel(supabase, `site:${order.id}`, "/api/webhooks/site", "x-site-secret", Deno.env.get("WHATSENTREGAVEL_SITE_SECRET"), { order_id: order.id, name: input.buyerName.trim(), phone: `55${phone}`, paid: false, quiz, story: input.story.trim() });
 
