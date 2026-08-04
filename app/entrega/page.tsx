@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { SupportWhatsApp } from "../components/SupportWhatsApp";
+import { MusicGenerationLoading } from "../components/MusicGenerationLoading";
 
 type Delivery = { status?: string; honoree?: string; musicUrl?: string; musicVersions?: string[]; error?: string };
 const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -53,7 +54,7 @@ export default function Entrega() {
 
   if (state.status === "delivery_failed") return <main className="delivery-page"><section className="delivery-card"><span className="delivery-mark">!</span><p className="kicker">PRECISAMOS DE UMA AJUDA RÁPIDA</p><h1>Não conseguimos recuperar as duas versões desta prévia.</h1><p>Não vamos gerar outra música. Fale com nosso suporte para liberarmos as faixas originais deste pedido.</p><SupportWhatsApp compact /></section></main>;
 
-  if (state.status !== "ready" || versions.length < 2) return <main className="delivery-page"><section className="delivery-card delivery-waiting"><span className="delivery-mark">♫</span><p className="kicker">PAGAMENTO CONFIRMADO</p><h1>Estamos preparando uma surpresa inesquecível.</h1><p>Suas duas versões completas estão sendo finalizadas com todo carinho. Deixe esta página aberta: elas aparecerão automaticamente.</p><div className="delivery-loader" aria-label="Preparando músicas"><span /></div></section></main>;
+  if (state.status !== "ready" || versions.length < 2) return <MusicGenerationLoading kicker="PAGAMENTO CONFIRMADO" title="Estamos preparando uma surpresa inesquecível." description="Suas duas versões completas estão sendo finalizadas com todo carinho. Deixe esta página aberta: elas aparecerão automaticamente." phrases={["Organizando cada detalhe da sua música", "A voz e os instrumentos estão ganhando vida", "Suas duas versões estão recebendo os últimos ajustes", "A surpresa está quase pronta para você ouvir"]}/>;
 
   return <main className="delivery-page"><section className="delivery-card delivery-ready"><span className="delivery-mark">♡</span><p className="kicker">SUAS 2 VERSÕES ESTÃO PRONTAS</p><h1>Uma surpresa para <i>{state.honoree}</i>.</h1><p className="delivery-lead">Quando essas músicas tocarem, {state.honoree} vai sentir o carinho em cada detalhe. Prepare-se para uma reação que vocês vão guardar para sempre.</p><div className="delivery-versions">{versions.map((url, index) => <div className="delivery-version" key={url}><span>VERSÃO {index + 1}</span><audio controls src={url}>Seu navegador não suporta áudio.</audio><button className="primary delivery-download" disabled={downloading !== null} onClick={() => void downloadTrack(index)}>{downloading === index ? "Preparando download…" : `↓ Baixar versão ${index + 1}`}</button></div>)}</div>{downloadError&&<p className="error">{downloadError}</p>}<p className="delivery-note">Baixe cada versão separadamente para guardar e compartilhar quando quiser.</p><SupportWhatsApp compact /></section></main>;
 }
