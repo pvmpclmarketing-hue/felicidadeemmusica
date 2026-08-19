@@ -1,6 +1,6 @@
 const hash = async (value: string) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value.trim().toLowerCase())))).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 
-async function sendMetaEvent(eventName: "InitiateCheckout" | "Purchase", order: Record<string, unknown>, request?: Request) {
+async function sendMetaEvent(eventName: "InitiateCheckout" | "Purchase", order: Record<string, unknown>, request?: Request, eventId?: string) {
   const pixel = Deno.env.get("META_CAPI_PIXEL_ID");
   const token = Deno.env.get("META_CAPI_ACCESS_TOKEN");
   if (!pixel || !token) return;
@@ -9,7 +9,7 @@ async function sendMetaEvent(eventName: "InitiateCheckout" | "Purchase", order: 
   const event = {
     event_name: eventName,
     event_time: Math.floor(Date.now() / 1000),
-    event_id: `${eventName === "Purchase" ? "purchase" : "initiate"}_${order.id}`,
+    event_id: eventId || `${eventName === "Purchase" ? "purchase" : "initiate"}_${order.id}`,
     action_source: "website",
     event_source_url: Deno.env.get("SITE_URL") ?? "",
     user_data: {
@@ -27,5 +27,5 @@ async function sendMetaEvent(eventName: "InitiateCheckout" | "Purchase", order: 
   } catch { /* acompanhamento não pode bloquear o pedido */ }
 }
 
-export const trackMetaInitiateCheckout = (order: Record<string, unknown>, request?: Request) => sendMetaEvent("InitiateCheckout", order, request);
+export const trackMetaInitiateCheckout = (order: Record<string, unknown>, request?: Request, eventId?: string) => sendMetaEvent("InitiateCheckout", order, request, eventId);
 export const trackMetaPurchase = (order: Record<string, unknown>, request?: Request) => sendMetaEvent("Purchase", order, request);

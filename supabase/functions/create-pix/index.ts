@@ -8,7 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json; charset=utf-8",
 };
-type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; deliveryMode?: "whatsapp" | "download"; previewId?: string };
+type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; deliveryMode?: "whatsapp" | "download"; previewId?: string; metaEventId?: string };
 const fail = (error: string, status = 400) => new Response(JSON.stringify({ error }), { status, headers: corsHeaders });
 
 async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, eventKey: string, path: string, secretHeader: string, secret: string | undefined, payload: Record<string, unknown>) {
@@ -56,7 +56,7 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
     const { data: order, error: orderError } = await supabase.from("orders").insert({ recipient: input.recipient, style: input.style, honoree: input.name.trim(), story: input.story.trim(), lyric_text: lyrics, buyer_name: input.buyerName.trim(), buyer_phone: phone, amount_cents: amountCents, quiz_data: quiz, delivery_mode: input.deliveryMode === "download" ? "download" : "whatsapp", music_url: existingVersions[0] ?? null, music_versions: existingVersions }).select("id,buyer_phone,amount_cents").single();
     if (orderError || !order) throw new Error("Não foi possível registrar o pedido.");
 
-    await trackMetaInitiateCheckout(order, request);
+    await trackMetaInitiateCheckout(order, request, /^initiate_[\w-]{20,100}$/.test(input.metaEventId ?? "") ? input.metaEventId : undefined);
 
     if (input.deliveryMode !== "download") await notifyWhatsEntregavel(supabase, `site:${order.id}`, "/api/webhooks/site", "x-site-secret", Deno.env.get("WHATSENTREGAVEL_SITE_SECRET"), { order_id: order.id, name: input.buyerName.trim(), phone: `55${phone}`, paid: false, quiz, story: input.story.trim() });
 
