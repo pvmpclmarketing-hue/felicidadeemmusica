@@ -74,7 +74,12 @@ Deno.serve((request) => withApiMonitoring("asaas-webhook", request, async () => 
     if (!pendingOrder) return Response.json({ received: true });
     const { data: order } = await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), asaas_payment_id: event.payment.id }).eq("id", pendingOrder.id).eq("status", "awaiting_payment").select("*").maybeSingle();
     if (!order) return Response.json({ received: true });
-    await trackMetaPurchase(order, request);
+    const metaPurchase = await trackMetaPurchase(order, request);
+    if (!metaPurchase.delivered) {
+      console.error("Meta CAPI Purchase não entregue", { orderId: order.id, eventId: metaPurchase.eventId, error: metaPurchase.error });
+    } else {
+      console.log("Meta CAPI Purchase entregue", { orderId: order.id, eventId: metaPurchase.eventId });
+    }
     if (order.delivery_mode === "download") {
       const released = await releaseExistingPreview(supabase, order);
       if (!released && isAudioPreviewDownload(order)) {

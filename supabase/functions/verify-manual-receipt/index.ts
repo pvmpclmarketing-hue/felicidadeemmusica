@@ -16,13 +16,14 @@ const acceptedAmount = (value: unknown, expectedCents: number) => Math.abs(Numbe
 const hash = async (value: string) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value.trim().toLowerCase())))).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 
 async function trackMetaPurchase(order: Record<string, any>, request?: Request) {
+  const eventId = `purchase_${String(order.id)}`;
   const pixel = Deno.env.get("META_CAPI_PIXEL_ID"), token = Deno.env.get("META_CAPI_ACCESS_TOKEN");
-  if (!pixel || !token) return;
+  if (!pixel || !token) return { delivered: false, eventId, error: "Meta CAPI não configurada." };
   const phone = String(order.buyer_phone ?? "").replace(/\D/g, "");
   const event = {
     event_name: "Purchase",
     event_time: Math.floor(Date.now() / 1000),
-    event_id: `purchase_${order.id}`,
+    event_id: eventId,
     action_source: "website",
     event_source_url: Deno.env.get("SITE_URL") ?? "",
     user_data: {
@@ -32,12 +33,17 @@ async function trackMetaPurchase(order: Record<string, any>, request?: Request) 
     custom_data: { currency: "BRL", value: Number(order.amount_cents ?? 1990) / 100, order_id: order.id },
   };
   try {
-    await fetch(`https://graph.facebook.com/v22.0/${pixel}/events?access_token=${encodeURIComponent(token)}`, {
+    const response = await fetch(`https://graph.facebook.com/v22.0/${pixel}/events?access_token=${encodeURIComponent(token)}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ data: [event], ...(Deno.env.get("META_CAPI_TEST_EVENT_CODE") ? { test_event_code: Deno.env.get("META_CAPI_TEST_EVENT_CODE") } : {}) }),
     });
-  } catch {}
+    const responseText = await response.text();
+    if (!response.ok) return { delivered: false, eventId, error: `Meta CAPI respondeu ${response.status}: ${responseText.slice(0, 500)}` };
+    return { delivered: true, eventId };
+  } catch (error) {
+    return { delivered: false, eventId, error: error instanceof Error ? error.message : "Falha desconhecida ao enviar Purchase à Meta." };
+  }
 }
 
 async function start(db: ReturnType<typeof createClient>, order: Record<string, any>) {
@@ -166,7 +172,12 @@ Deno.serve((req) => withApiMonitoring("verify-manual-receipt", req, async () => 
     if (!validAmount) return fail("O valor do comprovante não corresponde ao valor deste pedido.", 422);
     if (!validReceiver) return fail("Não localizamos o recebedor configurado neste comprovante Pix.", 422);
 
-    await trackMetaPurchase(order, req);
+    const metaPurchase = await trackMetaPurchase(order, req);
+    if (!metaPurchase.delivered) {
+      console.error("Meta CAPI Purchase não entregue", { orderId: order.id, eventId: metaPurchase.eventId, error: metaPurchase.error });
+    } else {
+      console.log("Meta CAPI Purchase entregue", { orderId: order.id, eventId: metaPurchase.eventId });
+    }
     await releaseOrGenerate(db, order);
     return new Response(JSON.stringify({ approved: true, next: order.quiz_data?.fulfillment_mode === "deliver_existing_preview_audio" ? "download" : "generation" }), { headers });
   } catch (error) {
