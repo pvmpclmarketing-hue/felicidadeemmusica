@@ -86,7 +86,15 @@ Deno.serve((request) => withApiMonitoring("asaas-webhook", request, async () => 
         await supabase.from("orders").update({ status: "delivery_failed" }).eq("id", order.id);
       } else if (!released) await startDirectDelivery(supabase, order);
     } else await notifyWhatsEntregavel(supabase, order);
-    return Response.json({ received: true });
+    // A confirmação do Asaas deve continuar recebendo HTTP 200 para não criar
+    // reenvios do webhook. Porém, uma falha da Meta precisa ficar registrada
+    // no api_call_logs; assim ela nunca passa despercebida como antes.
+    return Response.json(
+      { received: true, meta_capi_delivered: metaPurchase.delivered, meta_event_id: metaPurchase.eventId },
+      metaPurchase.delivered
+        ? undefined
+        : { headers: { "x-api-monitor-error": `Meta CAPI Purchase: ${metaPurchase.error ?? "não entregue"}` } },
+    );
   } catch (error) {
     console.error(error);
     return Response.json(
