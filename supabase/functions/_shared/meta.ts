@@ -15,7 +15,7 @@ async function sendMetaEvent(eventName: "InitiateCheckout" | "Purchase", order: 
   const quiz = (order.quiz_data ?? {}) as Record<string, unknown>;
   const isKidsBirthday = typeof quiz.site_variant === "string" && quiz.site_variant.startsWith("kids_birthday_");
   const pixel = isKidsBirthday
-    ? (Deno.env.get("META_CAPI_PIXEL_ID_KIDS_BIRTHDAY") ?? Deno.env.get("META_CAPI_PIXEL_ID"))
+    ? (Deno.env.get("META_CAPI_PIXEL_ID_KIDS_BIRTHDAY") ?? "4049735971823443")
     : Deno.env.get("META_CAPI_PIXEL_ID");
   const token = isKidsBirthday
     ? (Deno.env.get("META_CAPI_ACCESS_TOKEN_KIDS_BIRTHDAY") ?? Deno.env.get("META_CAPI_ACCESS_TOKEN"))

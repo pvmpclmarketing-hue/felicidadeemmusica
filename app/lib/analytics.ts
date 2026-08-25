@@ -3,6 +3,13 @@
 declare global { interface Window { fbq?: (...args: unknown[]) => void; gtag?: (...args: unknown[]) => void; } }
 
 const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "27184997131196642";
+const kidsBirthdayMetaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID_KIDS_BIRTHDAY ?? "4049735971823443";
+
+function activeMetaPixelId() {
+  return typeof window !== "undefined" && window.location.pathname.startsWith("/versao-infantil")
+    ? kidsBirthdayMetaPixelId
+    : metaPixelId;
+}
 
 /**
  * Advanced Matching manual: the Meta Pixel hashes this phone number before
@@ -15,7 +22,7 @@ export function identifyMetaCustomer(phone: string, name?: string) {
   const nameParts = (name ?? "").trim().split(/\s+/).filter(Boolean);
   const key = `meta:advanced-matching:${normalized}:${nameParts.join("_").toLowerCase()}`;
   if (window.sessionStorage.getItem(key)) return;
-  window.fbq("init", metaPixelId, {
+  window.fbq("init", activeMetaPixelId(), {
     ph: `55${normalized}`,
     ...(nameParts[0] ? { fn: nameParts[0] } : {}),
     ...(nameParts.length > 1 ? { ln: nameParts.at(-1) } : {}),
