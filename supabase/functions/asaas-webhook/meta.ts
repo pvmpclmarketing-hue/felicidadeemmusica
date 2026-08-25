@@ -14,8 +14,14 @@ export type MetaPurchaseResult = {
  */
 export async function trackMetaPurchase(order: Record<string, any>, request?: Request): Promise<MetaPurchaseResult> {
   const eventId = `purchase_${String(order.id)}`;
-  const pixel = Deno.env.get("META_CAPI_PIXEL_ID");
-  const token = Deno.env.get("META_CAPI_ACCESS_TOKEN");
+  const quiz = (order.quiz_data ?? {}) as Record<string, unknown>;
+  const isKidsBirthday = typeof quiz.site_variant === "string" && quiz.site_variant.startsWith("kids_birthday_");
+  const pixel = isKidsBirthday
+    ? (Deno.env.get("META_CAPI_PIXEL_ID_KIDS_BIRTHDAY") ?? Deno.env.get("META_CAPI_PIXEL_ID"))
+    : Deno.env.get("META_CAPI_PIXEL_ID");
+  const token = isKidsBirthday
+    ? (Deno.env.get("META_CAPI_ACCESS_TOKEN_KIDS_BIRTHDAY") ?? Deno.env.get("META_CAPI_ACCESS_TOKEN"))
+    : Deno.env.get("META_CAPI_ACCESS_TOKEN");
   if (!pixel || !token) return { delivered: false, eventId, error: "Meta CAPI não configurada." };
 
   const phone = String(order.buyer_phone ?? "").replace(/\D/g, "");
