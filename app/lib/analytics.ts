@@ -20,6 +20,7 @@ export function identifyMetaCustomer(phone: string, name?: string) {
     ...(nameParts[0] ? { fn: nameParts[0] } : {}),
     ...(nameParts.length > 1 ? { ln: nameParts.at(-1) } : {}),
   });
+  window.sessionStorage.setItem("meta:advanced-matching:phone", `55${normalized}`);
   window.sessionStorage.setItem(key, "1");
 }
 
