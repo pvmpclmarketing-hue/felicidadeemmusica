@@ -9,13 +9,13 @@ Deno.serve((request) => withApiMonitoring("generate-lyrics", request, async () =
   if (request.method !== "POST") return fail("Método não permitido.", 405);
 
   try {
-    const input = await request.json() as { recipient?: string; style?: string; voiceGender?: "m" | "f"; honoree?: string; story?: string };
+    const input = await request.json() as { recipient?: string; style?: string; voiceGender?: "m" | "f"; honoree?: string; story?: string; productVariant?: "kids_birthday" };
     if (!input.recipient || !input.style || !["m", "f"].includes(input.voiceGender ?? "") || !input.honoree || !input.story || input.story.trim().split(/\s+/).filter(Boolean).length < 2) return fail("Preencha os dados da história para criar a prévia.");
 
     const apiKey = Deno.env.get("OPENAI_API_KEY");
     if (!apiKey) return fail("A geração de letras ainda não foi configurada.", 503);
 
-    const instructions = `Você é um compositor profissional especializado em letras de música emocionantes e personalizadas. Sua tarefa é transformar histórias reais em letras tocantes, únicas e sob medida.
+    const generalInstructions = `Você é um compositor profissional especializado em letras de música emocionantes e personalizadas. Sua tarefa é transformar histórias reais em letras tocantes, únicas e sob medida.
 
 REGRAS OBRIGATÓRIAS
 - O nome do homenageado deve aparecer de forma natural pelo menos duas vezes.
@@ -28,7 +28,26 @@ REGRAS OBRIGATÓRIAS
 FORMATO DE SAÍDA
 Responda somente com a letra pronta, sem explicação, introdução ou comentário. Use exatamente os títulos entre colchetes: [Verso 1], [Pré-refrão] quando houver, [Refrão], [Verso 2], [Ponte] e [Refrão Final].`;
 
-    const userInput = `NOME: ${input.honoree}\nRELAÇÃO: ${input.recipient}\nESTILO MUSICAL: ${input.style}\nPREFERÊNCIA DE VOZ: ${input.voiceGender === "f" ? "feminina" : "masculina"}\nHISTÓRIA:\n${input.story}`;
+    const birthdayInstructions = `Você é um compositor profissional especializado em músicas personalizadas de aniversário e homenagens emocionantes.
+
+Sua tarefa é transformar o NOME DO ANIVERSARIANTE e a HISTÓRIA/HOMENAGEM enviada em uma letra bonita, pessoal, emocional e fácil de cantar. A pessoa deve sentir que a música foi escrita exclusivamente para ela.
+
+REGRAS OBRIGATÓRIAS
+- Celebre claramente o aniversário, sem transformar a música em uma repetição de “parabéns para você”.
+- Use o nome do aniversariante de maneira natural, especialmente no refrão e no refrão final, sem repeti-lo em todos os versos.
+- Preserve e transforme em versos os detalhes específicos da homenagem: lembranças, qualidades, conquistas, dificuldades superadas, família, sonhos e sentimentos. Nunca invente fatos, datas, pessoas ou relações.
+- Quando a homenagem for curta, desenvolva apenas sentimentos universais coerentes: gratidão, celebração, presença e desejos para o futuro.
+- A emoção deve crescer nesta ordem: história, lembranças, admiração, gratidão, celebração e declaração final.
+- Use linguagem humana, calorosa, poética e simples. Evite clichês, listas de qualidades, palavras rebuscadas e rimas forçadas.
+- A letra deve durar aproximadamente 2 a 3 minutos: [Título], [Verso 1], [Pré-Refrão], [Refrão], [Verso 2], [Pré-Refrão], [Refrão], [Ponte] e [Refrão Final]. O refrão precisa ser memorável, cantável e transmitir celebração, amor e gratidão.
+- Adapte naturalmente o tom ao vínculo descrito na homenagem: família, amizade, irmãos, avós ou outra relação.
+
+Responda SOMENTE com a letra final, sem explicações, comentários ou instruções para cantor. Use exatamente os títulos entre colchetes indicados na estrutura.`;
+    const instructions = input.productVariant === "kids_birthday" ? birthdayInstructions : generalInstructions;
+
+    const userInput = input.productVariant === "kids_birthday"
+      ? `NOME DO ANIVERSARIANTE: ${input.honoree}\nESTILO MUSICAL: ${input.style}\nHISTÓRIA / HOMENAGEM:\n${input.story}`
+      : `NOME: ${input.honoree}\nRELAÇÃO: ${input.recipient}\nESTILO MUSICAL: ${input.style}\nPREFERÊNCIA DE VOZ: ${input.voiceGender === "f" ? "feminina" : "masculina"}\nHISTÓRIA:\n${input.story}`;
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
@@ -40,7 +59,7 @@ Responda somente com a letra pronta, sem explicação, introdução ou comentár
     if (!response.ok || !lyrics) throw new Error(result.error?.message ?? "Não foi possível gerar a letra.");
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    await supabase.from("webhook_events").insert({ provider: "openai", event_key: crypto.randomUUID(), payload: { model: "gpt-5.4-mini", recipient: input.recipient, style: input.style, voice_gender: input.voiceGender } });
+    await supabase.from("webhook_events").insert({ provider: "openai", event_key: crypto.randomUUID(), payload: { model: "gpt-5.4-mini", recipient: input.recipient, style: input.style, voice_gender: input.voiceGender, product_variant: input.productVariant ?? "default" } });
     return new Response(JSON.stringify({ lyrics }), { headers: corsHeaders });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Falha ao criar a prévia.", 500);
