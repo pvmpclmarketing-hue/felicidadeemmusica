@@ -8,7 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json; charset=utf-8",
 };
-type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; deliveryMode?: "whatsapp" | "download"; previewId?: string; metaEventId?: string };
+type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; deliveryMode?: "whatsapp" | "download"; previewId?: string; metaEventId?: string; productVariant?: "kids_birthday" };
 const fail = (error: string, status = 400) => new Response(JSON.stringify({ error }), { status, headers: corsHeaders });
 
 async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, eventKey: string, path: string, secretHeader: string, secret: string | undefined, payload: Record<string, unknown>) {
@@ -37,7 +37,11 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
     if (!input.recipient || !input.style || !["m", "f"].includes(input.voiceGender ?? "") || !input.name || !input.story || input.story.trim().split(/\s+/).filter(Boolean).length < 2 || !input.buyerName || !/^\d{10,11}$/.test(phone)) return fail("Informe nome e WhatsApp válidos para criar o Pix.");
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const amountCents = Number(Deno.env.get("MUSIC_PRICE_CENTS") ?? "1990");
+    // O valor nunca vem diretamente do navegador: a variante é validada aqui
+    // para impedir que alguém altere o valor no DevTools.
+    const amountCents = input.productVariant === "kids_birthday"
+      ? 2990
+      : Number(Deno.env.get("MUSIC_PRICE_CENTS") ?? "1990");
     if (!Number.isInteger(amountCents) || amountCents < 100) throw new Error("Valor da música não foi configurado corretamente.");
     let lyrics = input.lyricText?.trim() || null;
     let previewAudioUrls: string[] = [];
@@ -49,7 +53,7 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
     previewAudioUrls = [...new Set(previewAudioUrls)].slice(0, 2);
     const fulfillmentMode = previewAudioUrls.length >= 2 ? "deliver_existing_preview_audio" : "generate_music_in_miniflux";
     const siteVariant = `${previewAudioUrls.length >= 2 ? "audio_preview" : "lyric_preview"}_${input.deliveryMode === "download" ? "download" : "whatsapp"}`;
-    const quiz = { recipient: input.recipient, style: input.style, music_style: input.style, voice_gender: input.voiceGender, honoree: input.name.trim(), story: input.story.trim(), preview_id: input.previewId ?? null, preview_audio_urls: previewAudioUrls, fulfillment_mode: fulfillmentMode, site_variant: siteVariant };
+    const quiz = { recipient: input.recipient, style: input.style, music_style: input.style, voice_gender: input.voiceGender, honoree: input.name.trim(), story: input.story.trim(), preview_id: input.previewId ?? null, preview_audio_urls: previewAudioUrls, fulfillment_mode: fulfillmentMode, site_variant: input.productVariant === "kids_birthday" ? `kids_birthday_${siteVariant}` : siteVariant };
     if (input.deliveryMode === "download" && !lyrics) return fail("Não foi possível localizar a letra desta prévia.");
     if (input.deliveryMode === "download" && input.previewId && previewAudioUrls.length < 2) return fail("Ainda não localizamos as duas músicas da prévia. Aguarde a prévia ficar pronta antes de gerar o Pix.", 409);
     const existingVersions = input.deliveryMode === "download" && previewAudioUrls.length >= 2 ? previewAudioUrls : [];
