@@ -5,9 +5,14 @@ import { useEffect, useMemo, useState } from "react";
 const fallbackPhone = (process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? "5522992885365").replace(/\D/g, "");
 const supportMessage = "Olá! Preciso de ajuda com a minha música personalizada.";
 
-export function SupportWhatsApp({ compact = false }: { compact?: boolean }) {
-  const [phone, setPhone] = useState(fallbackPhone);
+export function SupportWhatsApp({ compact = false, phoneOverride }: { compact?: boolean; phoneOverride?: string }) {
+  const normalizedOverride = phoneOverride?.replace(/\D/g, "");
+  const [phone, setPhone] = useState(normalizedOverride || fallbackPhone);
   useEffect(() => {
+    if (normalizedOverride) {
+      setPhone(normalizedOverride);
+      return;
+    }
     const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!baseUrl || !publishableKey) return;
@@ -17,7 +22,7 @@ export function SupportWhatsApp({ compact = false }: { compact?: boolean }) {
         const configured = settings[0]?.support_whatsapp?.replace(/\D/g, "");
         if (configured) setPhone(configured);
       }).catch(() => undefined);
-  }, []);
+  }, [normalizedOverride]);
   const supportUrl = useMemo(() => `https://wa.me/${phone}?text=${encodeURIComponent(supportMessage)}`, [phone]);
   return <section className={`support-whatsapp${compact ? " support-whatsapp-compact" : ""}`}>
     <p>PRECISA DE AJUDA?</p>
