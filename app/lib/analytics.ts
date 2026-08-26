@@ -34,7 +34,7 @@ export function identifyMetaCustomer(phone: string, name?: string) {
 export function trackInitiateCheckout(eventId: string, amountCents = Number(process.env.NEXT_PUBLIC_MUSIC_PRICE_CENTS ?? 1990)) {
   const value = amountCents / 100;
   window.fbq?.("track", "InitiateCheckout", { currency: "BRL", value }, { eventID: eventId });
-  if (window.location.pathname.startsWith("/tiktok")) window.ttq?.track("InitiateCheckout", { currency: "BRL", value, event_id: eventId, content_id: "musica-personalizada", content_type: "product" });
+  if (window.location.pathname.startsWith("/tiktok")) window.ttq?.track("InitiateCheckout", { currency: "BRL", value, event_id: eventId, content_id: "musica-personalizada", content_type: "product", contents: [{ content_id: "musica-personalizada", content_type: "product", price: value, quantity: 1 }] });
   window.gtag?.("event", "begin_checkout", { currency: "BRL", value, transaction_id: eventId });
 }
 
@@ -42,6 +42,6 @@ export function trackPurchase(orderId: string, amountCents = Number(process.env.
   const value = amountCents / 100;
   const eventId = `purchase_${orderId}`;
   window.fbq?.("track", "Purchase", { currency: "BRL", value }, { eventID: eventId });
-  if (window.location.pathname.startsWith("/tiktok")) window.ttq?.track("CompletePayment", { currency: "BRL", value, event_id: eventId, content_id: "musica-personalizada", content_type: "product" });
+  if (window.location.pathname.startsWith("/tiktok")) window.ttq?.track("CompletePayment", { currency: "BRL", value, event_id: eventId, content_id: "musica-personalizada", content_type: "product", contents: [{ content_id: "musica-personalizada", content_type: "product", price: value, quantity: 1 }] });
   window.gtag?.("event", "purchase", { currency: "BRL", value, transaction_id: orderId });
 }

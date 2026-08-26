@@ -42,6 +42,7 @@ async function sendTikTokEvent(
       content_id: "musica-personalizada",
       content_type: "product",
       description: "Música personalizada",
+      contents: [{ content_id: "musica-personalizada", content_type: "product", price: amount, quantity: 1 }],
     },
   };
 
