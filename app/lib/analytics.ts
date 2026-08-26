@@ -44,4 +44,10 @@ export function trackPurchase(orderId: string, amountCents = Number(process.env.
   window.fbq?.("track", "Purchase", { currency: "BRL", value }, { eventID: eventId });
   if (window.location.pathname.startsWith("/tiktok")) window.ttq?.track("CompletePayment", { currency: "BRL", value, event_id: eventId, content_id: "musica-personalizada", content_type: "product", contents: [{ content_id: "musica-personalizada", content_type: "product", price: value, quantity: 1 }] });
   window.gtag?.("event", "purchase", { currency: "BRL", value, transaction_id: orderId });
+  if (window.location.pathname.startsWith("/tiktok")) {
+    window.gtag?.("event", "conversion", {
+      send_to: "AW-18378423513/HdowCIX8rOgcENn5wbtE",
+      transaction_id: orderId,
+    });
+  }
 }
