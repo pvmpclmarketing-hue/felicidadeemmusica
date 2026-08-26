@@ -1,6 +1,6 @@
 "use client";
 
-declare global { interface Window { fbq?: (...args: unknown[]) => void; gtag?: (...args: unknown[]) => void; } }
+declare global { interface Window { fbq?: (...args: unknown[]) => void; gtag?: (...args: unknown[]) => void; ttq?: { track: (event: string, data?: Record<string, unknown>) => void }; } }
 
 const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "27184997131196642";
 const kidsBirthdayMetaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID_KIDS_BIRTHDAY ?? "4049735971823443";
@@ -34,6 +34,7 @@ export function identifyMetaCustomer(phone: string, name?: string) {
 export function trackInitiateCheckout(eventId: string, amountCents = Number(process.env.NEXT_PUBLIC_MUSIC_PRICE_CENTS ?? 1990)) {
   const value = amountCents / 100;
   window.fbq?.("track", "InitiateCheckout", { currency: "BRL", value }, { eventID: eventId });
+  if (window.location.pathname.startsWith("/tiktok")) window.ttq?.track("InitiateCheckout", { currency: "BRL", value, event_id: eventId, content_id: "musica-personalizada", content_type: "product" });
   window.gtag?.("event", "begin_checkout", { currency: "BRL", value, transaction_id: eventId });
 }
 
@@ -41,5 +42,6 @@ export function trackPurchase(orderId: string, amountCents = Number(process.env.
   const value = amountCents / 100;
   const eventId = `purchase_${orderId}`;
   window.fbq?.("track", "Purchase", { currency: "BRL", value }, { eventID: eventId });
+  if (window.location.pathname.startsWith("/tiktok")) window.ttq?.track("CompletePayment", { currency: "BRL", value, event_id: eventId, content_id: "musica-personalizada", content_type: "product" });
   window.gtag?.("event", "purchase", { currency: "BRL", value, transaction_id: orderId });
 }

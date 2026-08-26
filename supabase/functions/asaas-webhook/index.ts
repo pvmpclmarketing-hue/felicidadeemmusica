@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { trackMetaPurchase } from "./meta.ts";
+import { trackTikTokCompletePayment } from "../_shared/tiktok.ts";
 import { withApiMonitoring } from "../_shared/api-observability.ts";
 
 async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, order: Record<string, unknown>) {
@@ -75,11 +76,13 @@ Deno.serve((request) => withApiMonitoring("asaas-webhook", request, async () => 
     const { data: order } = await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), asaas_payment_id: event.payment.id }).eq("id", pendingOrder.id).eq("status", "awaiting_payment").select("*").maybeSingle();
     if (!order) return Response.json({ received: true });
     const metaPurchase = await trackMetaPurchase(order, request);
+    const tikTokPurchase = await trackTikTokCompletePayment(order, request);
     if (!metaPurchase.delivered) {
       console.error("Meta CAPI Purchase não entregue", { orderId: order.id, eventId: metaPurchase.eventId, error: metaPurchase.error });
     } else {
       console.log("Meta CAPI Purchase entregue", { orderId: order.id, eventId: metaPurchase.eventId });
     }
+    if (!tikTokPurchase.delivered) console.error("TikTok Events API CompletePayment não entregue", { orderId: order.id, eventId: tikTokPurchase.eventId, error: tikTokPurchase.error });
     if (order.delivery_mode === "download") {
       const released = await releaseExistingPreview(supabase, order);
       if (!released && isAudioPreviewDownload(order)) {

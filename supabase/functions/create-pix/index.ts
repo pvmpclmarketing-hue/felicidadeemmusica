@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withApiMonitoring } from "../_shared/api-observability.ts";
 import { trackMetaInitiateCheckout } from "../_shared/meta.ts";
+import { trackTikTokInitiateCheckout } from "../_shared/tiktok.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json; charset=utf-8",
 };
-type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; deliveryMode?: "whatsapp" | "download"; previewId?: string; metaEventId?: string; productVariant?: "kids_birthday" };
+type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; deliveryMode?: "whatsapp" | "download"; previewId?: string; metaEventId?: string; productVariant?: "kids_birthday"; marketingSource?: "tiktok" };
 const fail = (error: string, status = 400) => new Response(JSON.stringify({ error }), { status, headers: corsHeaders });
 
 async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, eventKey: string, path: string, secretHeader: string, secret: string | undefined, payload: Record<string, unknown>) {
@@ -53,7 +54,7 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
     previewAudioUrls = [...new Set(previewAudioUrls)].slice(0, 2);
     const fulfillmentMode = previewAudioUrls.length >= 2 ? "deliver_existing_preview_audio" : "generate_music_in_miniflux";
     const siteVariant = `${previewAudioUrls.length >= 2 ? "audio_preview" : "lyric_preview"}_${input.deliveryMode === "download" ? "download" : "whatsapp"}`;
-    const quiz = { recipient: input.recipient, style: input.style, music_style: input.style, voice_gender: input.voiceGender, honoree: input.name.trim(), story: input.story.trim(), preview_id: input.previewId ?? null, preview_audio_urls: previewAudioUrls, fulfillment_mode: fulfillmentMode, site_variant: input.productVariant === "kids_birthday" ? `kids_birthday_${siteVariant}` : siteVariant };
+    const quiz = { recipient: input.recipient, style: input.style, music_style: input.style, voice_gender: input.voiceGender, honoree: input.name.trim(), story: input.story.trim(), preview_id: input.previewId ?? null, preview_audio_urls: previewAudioUrls, fulfillment_mode: fulfillmentMode, site_variant: input.productVariant === "kids_birthday" ? `kids_birthday_${siteVariant}` : siteVariant, marketing_source: input.marketingSource ?? null };
     if (input.deliveryMode === "download" && !lyrics) return fail("Não foi possível localizar a letra desta prévia.");
     if (input.deliveryMode === "download" && input.previewId && previewAudioUrls.length < 2) return fail("Ainda não localizamos as duas músicas da prévia. Aguarde a prévia ficar pronta antes de gerar o Pix.", 409);
     const existingVersions = input.deliveryMode === "download" && previewAudioUrls.length >= 2 ? previewAudioUrls : [];
@@ -61,6 +62,8 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
     if (orderError || !order) throw new Error("Não foi possível registrar o pedido.");
 
     await trackMetaInitiateCheckout(order, request, /^initiate_[\w-]{20,100}$/.test(input.metaEventId ?? "") ? input.metaEventId : undefined);
+    const tikTokCheckout = await trackTikTokInitiateCheckout(order, request, /^initiate_[\w-]{20,100}$/.test(input.metaEventId ?? "") ? input.metaEventId : undefined);
+    if (!tikTokCheckout.delivered) console.error("TikTok Events API InitiateCheckout não entregue", { orderId: order.id, eventId: tikTokCheckout.eventId, error: tikTokCheckout.error });
 
     if (input.deliveryMode !== "download") await notifyWhatsEntregavel(supabase, `site:${order.id}`, "/api/webhooks/site", "x-site-secret", Deno.env.get("WHATSENTREGAVEL_SITE_SECRET"), { order_id: order.id, name: input.buyerName.trim(), phone: `55${phone}`, paid: false, quiz, story: input.story.trim() });
 
