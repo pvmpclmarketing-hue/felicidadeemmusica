@@ -65,6 +65,22 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
     const tikTokCheckout = await trackTikTokInitiateCheckout(order, request, /^initiate_[\w-]{20,100}$/.test(input.metaEventId ?? "") ? input.metaEventId : undefined);
     if (!tikTokCheckout.delivered) console.error("TikTok Events API InitiateCheckout não entregue", { orderId: order.id, eventId: tikTokCheckout.eventId, error: tikTokCheckout.error });
 
+    // A versão TikTok cria a cobrança pela Efí no Minifluxo: o certificado P12
+    // fica somente naquele backend e nunca chega ao navegador ou ao Supabase.
+    if (input.marketingSource === "tiktok") {
+      const baseUrl = Deno.env.get("WHATSENTREGAVEL_URL");
+      const integrationKey = Deno.env.get("WHATSENTREGAVEL_INTEGRATION_KEY");
+      const secret = Deno.env.get("WHATSENTREGAVEL_SITE_SECRET");
+      if (!baseUrl || !integrationKey || !secret) throw new Error("Integração Efí/Minifluxo ainda não foi configurada.");
+      const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/webhooks/site/efi-pix`, {
+        method: "POST", headers: { "content-type": "application/json", "x-site-secret": secret },
+        body: JSON.stringify({ integration_key: integrationKey, order_id: order.id, name: input.buyerName.trim(), phone: `55${phone}`, quiz, story: input.story.trim(), lyric_text: lyrics, amount_cents: amountCents }),
+      });
+      const efi = await response.json().catch(() => ({})) as { pixPayload?: string; qrCode?: string | null; expiresAt?: string; error?: string };
+      if (!response.ok || !efi.pixPayload) throw new Error(efi.error || "Não foi possível gerar o Pix pela Efí.");
+      return new Response(JSON.stringify({ orderId: order.id, qrCode: efi.qrCode ?? null, pixPayload: efi.pixPayload, expiresAt: efi.expiresAt }), { headers: corsHeaders });
+    }
+
     if (input.deliveryMode !== "download") await notifyWhatsEntregavel(supabase, `site:${order.id}`, "/api/webhooks/site", "x-site-secret", Deno.env.get("WHATSENTREGAVEL_SITE_SECRET"), { order_id: order.id, name: input.buyerName.trim(), phone: `55${phone}`, paid: false, quiz, story: input.story.trim() });
 
     const asaasUrl = Deno.env.get("ASAAS_API_URL") ?? "https://api.asaas.com/v3";
