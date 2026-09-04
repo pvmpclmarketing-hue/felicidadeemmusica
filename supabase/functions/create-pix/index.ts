@@ -29,6 +29,30 @@ async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, 
   }
 }
 
+/**
+ * O Asaas ocasionalmente encerra a primeira resposta do QR estático sem corpo.
+ * Fazemos uma única nova tentativa somente para respostas vazias/temporárias,
+ * evitando expor essa instabilidade ao checkout.
+ */
+async function createAsaasStaticQr(url: string, headers: Record<string, string>, body: Record<string, unknown>) {
+  let lastError = "Não foi possível gerar o QR Code Pix.";
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+    const raw = await response.text();
+    let qr: { id?: string; encodedImage?: string; payload?: string; expirationDate?: string; errors?: Array<{ description?: string }> } | null = null;
+    try { qr = raw ? JSON.parse(raw) : null; } catch { qr = null; }
+    if (response.ok && qr?.id && qr.encodedImage && qr.payload) return qr;
+
+    lastError = qr?.errors?.[0]?.description ?? (raw ? "O Asaas não retornou um QR Code válido." : "O Asaas respondeu sem dados ao gerar o Pix.");
+    if (attempt === 0 && (!raw || response.status >= 500)) {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      continue;
+    }
+    throw new Error(lastError);
+  }
+  throw new Error(lastError);
+}
+
 Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return fail("Método não permitido.", 405);
@@ -81,7 +105,8 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
       return new Response(JSON.stringify({ orderId: order.id, qrCode: efi.qrCode ?? null, pixPayload: efi.pixPayload, expiresAt: efi.expiresAt }), { headers: corsHeaders });
     }
 
-    if (input.deliveryMode !== "download") await notifyWhatsEntregavel(supabase, `site:${order.id}`, "/api/webhooks/site", "x-site-secret", Deno.env.get("WHATSENTREGAVEL_SITE_SECRET"), { order_id: order.id, name: input.buyerName.trim(), phone: `55${phone}`, paid: false, quiz, story: input.story.trim() });
+    // O Minifluxo é chamado somente após o webhook de pagamento aprovado.
+    // Não aguardamos nenhuma integração de entrega antes de devolver o Pix.
 
     const asaasUrl = Deno.env.get("ASAAS_API_URL") ?? "https://api.asaas.com/v3";
     const asaasKey = Deno.env.get("ASAAS_API_KEY");
@@ -91,9 +116,7 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
     const headers = { "content-type": "application/json", access_token: asaasKey };
     // Asaas aceita no máximo 50 caracteres na descrição do QR Code estático.
     const qrDescription = `Pedido música ${order.id.slice(0, 8)}`;
-    const qrResponse = await fetch(`${asaasUrl}/pix/qrCodes/static`, { method: "POST", headers, body: JSON.stringify({ addressKey, description: qrDescription, value: amountCents / 100, format: "ALL", expirationSeconds: 1800, allowsMultiplePayments: false, externalReference: order.id }) });
-    const qr = await qrResponse.json();
-    if (!qrResponse.ok || !qr.id || !qr.encodedImage || !qr.payload) throw new Error(qr.errors?.[0]?.description ?? "Não foi possível gerar o QR Code Pix.");
+    const qr = await createAsaasStaticQr(`${asaasUrl}/pix/qrCodes/static`, headers, { addressKey, description: qrDescription, value: amountCents / 100, format: "ALL", expirationSeconds: 1800, allowsMultiplePayments: false, externalReference: order.id });
 
     await supabase.from("orders").update({ asaas_static_qr_id: qr.id }).eq("id", order.id);
     return new Response(JSON.stringify({ orderId: order.id, qrCode: `data:image/png;base64,${qr.encodedImage}`, pixPayload: qr.payload, expiresAt: qr.expirationDate }), { headers: corsHeaders });
