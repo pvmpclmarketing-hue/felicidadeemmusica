@@ -94,7 +94,9 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
     if (input.marketingSource === "tiktok" || input.marketingSource === "novo") {
       const baseUrl = Deno.env.get("WHATSENTREGAVEL_URL");
       const integrationKey = Deno.env.get("WHATSENTREGAVEL_INTEGRATION_KEY");
-      const secret = Deno.env.get("WHATSENTREGAVEL_SITE_SECRET");
+      // O mesmo segredo privado é compartilhado com o Minifluxo para os dois
+      // webhooks Efí. Mantemos o legado como fallback para instalações antigas.
+      const secret = Deno.env.get("EFI_SITE_PAYMENT_WEBHOOK_SECRET") || Deno.env.get("WHATSENTREGAVEL_SITE_SECRET");
       if (!baseUrl || !integrationKey || !secret) throw new Error("Integração Efí/Minifluxo ainda não foi configurada.");
       const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/webhooks/site/efi-pix`, {
         method: "POST", headers: { "content-type": "application/json", "x-site-secret": secret },
