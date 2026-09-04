@@ -19,11 +19,11 @@ const gallery = [
 ];
 const faqs = [["Quanto custa?", "Você recebe a prévia para avaliar e só então escolhe desbloquear as 2 versões por R$ 19,90."], ["Preciso pagar antes?", "Não. Primeiro você conta a história, confere a letra e decide se quer seguir para o Pix."], ["Como recebo minha música?", "Depois da confirmação do pagamento, preparamos as versões e avisamos você pelo WhatsApp."], ["Em quanto tempo fica pronta?", "A prévia é apresentada antes do pagamento. Depois, a produção final entra na nossa fila de preparação."], ["Quantas versões eu recebo?", "Duas versões completas, feitas a partir da sua história."]];
 
-export default function Home({directDownload=false,manualPayment=false,childrenBirthday=false,marketingSource,supportWhatsApp}:{directDownload?:boolean;manualPayment?:boolean;childrenBirthday?:boolean;marketingSource?:"tiktok";supportWhatsApp?:string}) {
+export default function Home({directDownload=false,manualPayment=false,childrenBirthday=false,marketingSource,supportWhatsApp}:{directDownload?:boolean;manualPayment?:boolean;childrenBirthday?:boolean;marketingSource?:"tiktok"|"novo";supportWhatsApp?:string}) {
   const priceCents = childrenBirthday ? 2990 : Number(process.env.NEXT_PUBLIC_MUSIC_PRICE_CENTS ?? 1990);
   const formattedPrice = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(priceCents / 100);
   const faqItems = childrenBirthday ? [["Quanto custa?", "Você recebe a prévia para avaliar e só então escolhe desbloquear as 2 versões por R$ 29,90."], ...faqs.slice(1)] : faqs;
-  const lyricStorageKey = childrenBirthday ? "fem:lyric-preview:kids-birthday:v1" : marketingSource === "tiktok" ? "fem:lyric-preview:tiktok:v1" : savedLyricKey;
+  const lyricStorageKey = childrenBirthday ? "fem:lyric-preview:kids-birthday:v1" : marketingSource === "tiktok" ? "fem:lyric-preview:tiktok:v1" : marketingSource === "novo" ? "fem:lyric-preview:novo:v1" : savedLyricKey;
   const sampleTracks = childrenBirthday
     ? [["🎈", "Exemplo 1", "/media/aniversario-exemplo-1.mp3"], ["🎂", "Exemplo 2", "/media/aniversario-exemplo-2.mp3"], ["🎵", "Exemplo 3", "/media/aniversario-exemplo-3.mp3"]]
     : [["🕊️", "Gospel", "/media/gospel.mp3"], ["🤠", "Sertanejo", "/media/sertanejo.mp3"], ["🥁", "Pagode", "/media/pagode.mp3"]];

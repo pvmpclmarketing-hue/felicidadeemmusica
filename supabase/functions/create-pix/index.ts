@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json; charset=utf-8",
 };
-type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; deliveryMode?: "whatsapp" | "download"; previewId?: string; metaEventId?: string; productVariant?: "kids_birthday"; marketingSource?: "tiktok" };
+type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; deliveryMode?: "whatsapp" | "download"; previewId?: string; metaEventId?: string; productVariant?: "kids_birthday"; marketingSource?: "tiktok" | "novo" };
 const fail = (error: string, status = 400) => new Response(JSON.stringify({ error }), { status, headers: corsHeaders });
 
 async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, eventKey: string, path: string, secretHeader: string, secret: string | undefined, payload: Record<string, unknown>) {
@@ -65,9 +65,9 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
     const tikTokCheckout = await trackTikTokInitiateCheckout(order, request, /^initiate_[\w-]{20,100}$/.test(input.metaEventId ?? "") ? input.metaEventId : undefined);
     if (!tikTokCheckout.delivered) console.error("TikTok Events API InitiateCheckout não entregue", { orderId: order.id, eventId: tikTokCheckout.eventId, error: tikTokCheckout.error });
 
-    // A versão TikTok cria a cobrança pela Efí no Minifluxo: o certificado P12
+    // TikTok e /novo criam a cobrança pela Efí no Minifluxo: o certificado P12
     // fica somente naquele backend e nunca chega ao navegador ou ao Supabase.
-    if (input.marketingSource === "tiktok") {
+    if (input.marketingSource === "tiktok" || input.marketingSource === "novo") {
       const baseUrl = Deno.env.get("WHATSENTREGAVEL_URL");
       const integrationKey = Deno.env.get("WHATSENTREGAVEL_INTEGRATION_KEY");
       const secret = Deno.env.get("WHATSENTREGAVEL_SITE_SECRET");
