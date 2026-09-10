@@ -2,6 +2,8 @@
 
 declare global { interface Window { fbq?: (...args: unknown[]) => void; gtag?: (...args: unknown[]) => void; ttq?: { track: (event: string, data?: Record<string, unknown>) => void }; } }
 
+export type MetaBrowserData = { fbp?: string; fbc?: string; eventSourceUrl?: string };
+
 const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "27184997131196642";
 const kidsBirthdayMetaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID_KIDS_BIRTHDAY ?? "4049735971823443";
 
@@ -29,6 +31,17 @@ export function identifyMetaCustomer(phone: string, name?: string) {
   });
   window.sessionStorage.setItem("meta:advanced-matching:phone", `55${normalized}`);
   window.sessionStorage.setItem(key, "1");
+}
+
+function readCookie(name: string) {
+  if (typeof document === "undefined") return undefined;
+  const prefix = `${name}=`;
+  return document.cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith(prefix))?.slice(prefix.length);
+}
+
+export function getMetaBrowserData(): MetaBrowserData {
+  if (typeof window === "undefined") return {};
+  return { fbp: readCookie("_fbp"), fbc: readCookie("_fbc"), eventSourceUrl: window.location.href };
 }
 
 export function trackInitiateCheckout(eventId: string, amountCents = Number(process.env.NEXT_PUBLIC_MUSIC_PRICE_CENTS ?? 1990)) {

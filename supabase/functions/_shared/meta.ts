@@ -11,7 +11,10 @@ function moneyValue(order: Record<string, unknown>) {
   return Math.round(amountCents) / 100;
 }
 
-async function sendMetaEvent(eventName: "InitiateCheckout" | "Purchase", order: Record<string, unknown>, request?: Request, eventId?: string) {
+type MetaResult = { delivered: boolean; eventId: string; error?: string };
+const normalized = (value: unknown) => String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+async function sendMetaEvent(eventName: "InitiateCheckout" | "Purchase", order: Record<string, unknown>, request?: Request, eventId?: string): Promise<MetaResult> {
   const quiz = (order.quiz_data ?? {}) as Record<string, unknown>;
   const isKidsBirthday = typeof quiz.site_variant === "string" && quiz.site_variant.startsWith("kids_birthday_");
   const pixel = isKidsBirthday
@@ -20,18 +23,31 @@ async function sendMetaEvent(eventName: "InitiateCheckout" | "Purchase", order: 
   const token = isKidsBirthday
     ? (Deno.env.get("META_CAPI_ACCESS_TOKEN_KIDS_BIRTHDAY") ?? Deno.env.get("META_CAPI_ACCESS_TOKEN"))
     : Deno.env.get("META_CAPI_ACCESS_TOKEN");
-  if (!pixel || !token) return;
+  const resolvedEventId = eventId || `${eventName === "Purchase" ? "purchase" : "initiate"}_${String(order.id)}`;
+  if (!pixel || !token) return { delivered: false, eventId: resolvedEventId, error: "Meta CAPI não configurada." };
 
   const phone = String(order.buyer_phone ?? "").replace(/\D/g, "");
+  const nameParts = normalized(order.buyer_name).split(" ").filter(Boolean);
+  const tracking = (quiz.tracking ?? {}) as Record<string, unknown>;
+  const eventSourceUrl = typeof tracking.event_source_url === "string" ? tracking.event_source_url : Deno.env.get("SITE_URL") ?? "";
+  const fbp = typeof tracking.fbp === "string" ? tracking.fbp : undefined;
+  const fbc = typeof tracking.fbc === "string" ? tracking.fbc : undefined;
+  const clientUserAgent = typeof tracking.client_user_agent === "string" ? tracking.client_user_agent : request?.headers.get("user-agent") ?? undefined;
+  const clientIp = eventName === "InitiateCheckout" ? request?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() : undefined;
   const event = {
     event_name: eventName,
     event_time: Math.floor(Date.now() / 1000),
-    event_id: eventId || `${eventName === "Purchase" ? "purchase" : "initiate"}_${order.id}`,
+    event_id: resolvedEventId,
     action_source: "website",
-    event_source_url: Deno.env.get("SITE_URL") ?? "",
+    event_source_url: eventSourceUrl,
     user_data: {
       ...(phone ? { ph: [await hash(`55${phone}`)] } : {}),
-      ...(request ? { client_ip_address: request.headers.get("x-forwarded-for")?.split(",")[0], client_user_agent: request.headers.get("user-agent") } : {}),
+      ...(nameParts[0] ? { fn: [await hash(nameParts[0])] } : {}),
+      ...(nameParts.length > 1 ? { ln: [await hash(nameParts.at(-1)!)] } : {}),
+      ...(fbp ? { fbp } : {}),
+      ...(fbc ? { fbc } : {}),
+      ...(clientIp ? { client_ip_address: clientIp } : {}),
+      ...(clientUserAgent ? { client_user_agent: clientUserAgent } : {}),
     },
     // Meta requires a numeric value above zero and an ISO 4217 currency.
     custom_data: {
@@ -48,8 +64,12 @@ async function sendMetaEvent(eventName: "InitiateCheckout" | "Purchase", order: 
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ data: [event], ...(Deno.env.get("META_CAPI_TEST_EVENT_CODE") ? { test_event_code: Deno.env.get("META_CAPI_TEST_EVENT_CODE") } : {}) }),
     });
-    if (!response.ok) console.error("Meta CAPI rejeitou evento", { eventName, eventId: event.event_id, status: response.status, response: (await response.text()).slice(0, 500) });
-  } catch { /* acompanhamento não pode bloquear o pedido */ }
+    const responseText = await response.text();
+    if (!response.ok) return { delivered: false, eventId: resolvedEventId, error: `Meta CAPI respondeu ${response.status}: ${responseText.slice(0, 500)}` };
+    return { delivered: true, eventId: resolvedEventId };
+  } catch (error) {
+    return { delivered: false, eventId: resolvedEventId, error: error instanceof Error ? error.message : "Falha desconhecida ao enviar a CAPI." };
+  }
 }
 
 export const trackMetaInitiateCheckout = (order: Record<string, unknown>, request?: Request, eventId?: string) => sendMetaEvent("InitiateCheckout", order, request, eventId);
