@@ -80,7 +80,6 @@ export default function MexicoPage() {
     <section className="section"><p className="kicker">PAQUETE DISPONIBLE</p><h2>Una experiencia para recordar siempre</h2><p>No entregamos solo un audio: transformamos los detalles de tu historia en una canción para emocionar.</p><article className="pricing"><div className="pricing-tag">OFERTA ESPECIAL</div><p>Experiencia completa</p><h3>Paquete Premium</h3><div><s>R$ 147,00</s><strong>R$ 19,90</strong><small>Pago único</small></div><p className="bonus">🎁 Paga 1 y recibe 2 versiones</p><ul><li>Composición completa y personalizada</li><li>Voz y producción profesional</li><li>2 versiones de la canción</li><li>Letra antes del pago</li><li>Archivo para guardar siempre</li></ul><button className="primary" onClick={begin}>🎵 Crear mi canción</button><small>Solo pagas después de revisar la letra.</small></article></section>
     <section className="faq"><p className="kicker">RESUELVE TUS DUDAS</p><h2>Todo lo que necesitas saber antes de pedir tu canción</h2>{faqs.map(([question, answer], index) => <button className="faq-item" key={question} onClick={() => setOpenFaq(openFaq === index ? null : index)}><span><b>{question}</b>{openFaq === index && <em>{answer}</em>}</span><strong>{openFaq === index ? "−" : "+"}</strong></button>)}</section>
     <footer>© 2026 Felicidad en Música · Transformando historias en canciones ❤️</footer>
-    <button className="floating-cta" onClick={begin}>🎵 Crear mi canción</button>
   </main>;
 }
 
