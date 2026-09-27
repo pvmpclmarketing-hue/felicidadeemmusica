@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 const fallbackPhone = (process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? "5522992885365").replace(/\D/g, "");
 const supportMessage = "Olá! Preciso de ajuda com a minha música personalizada.";
 
-export function SupportWhatsApp({ compact = false, phoneOverride }: { compact?: boolean; phoneOverride?: string }) {
+export function SupportWhatsApp({ compact = false, phoneOverride, message = supportMessage, heading = "PRECISA DE AJUDA?", buttonLabel = "💬 Chamar no WhatsApp" }: { compact?: boolean; phoneOverride?: string; message?: string; heading?: string; buttonLabel?: string }) {
   const normalizedOverride = phoneOverride?.replace(/\D/g, "");
   const [phone, setPhone] = useState(normalizedOverride || fallbackPhone);
   useEffect(() => {
@@ -23,10 +23,10 @@ export function SupportWhatsApp({ compact = false, phoneOverride }: { compact?: 
         if (configured) setPhone(configured);
       }).catch(() => undefined);
   }, [normalizedOverride]);
-  const supportUrl = useMemo(() => `https://wa.me/${phone}?text=${encodeURIComponent(supportMessage)}`, [phone]);
+  const supportUrl = useMemo(() => `https://wa.me/${phone}?text=${encodeURIComponent(message)}`, [phone, message]);
   return <section className={`support-whatsapp${compact ? " support-whatsapp-compact" : ""}`}>
-    <p>PRECISA DE AJUDA?</p>
-    <a href={supportUrl} target="_blank" rel="noreferrer">💬 Chamar no WhatsApp</a>
+    <p>{heading}</p>
+    <a href={supportUrl} target="_blank" rel="noreferrer">{buttonLabel}</a>
   </section>;
 }
 
