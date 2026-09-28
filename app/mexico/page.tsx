@@ -117,6 +117,10 @@ function MexicoUnlock({ onUnlock }: { onUnlock: () => void }) {
       <p className="mexico-unlock-message">{message}</p>
       <h1>{ready ? "Tu canción está lista para desbloquear." : "Tu historia ya está cobrando vida."}</h1>
       <p className="mexico-unlock-copy">Una canción creada a partir de sus recuerdos puede convertirse en el regalo que esa persona nunca olvide.</p>
+      <figure className="mexico-unlock-testimonial">
+        <img src="/media/testimonio-mexico-desbloqueio.png" alt="Mensaje de una persona emocionada al recibir una canción personalizada" />
+        <figcaption>Imagina ese mensaje después de entregar tu sorpresa.</figcaption>
+      </figure>
       <div className="mexico-progress" aria-label={`${progress}% preparado`}><span style={{ width: `${progress}%` }} /></div>
       <strong className="mexico-progress-number">{progress}%</strong>
       {ready && <button className="primary mexico-unlock-button" onClick={onUnlock}>¡Pagar para desbloquear!</button>}
