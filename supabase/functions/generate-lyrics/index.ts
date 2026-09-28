@@ -9,7 +9,7 @@ Deno.serve((request) => withApiMonitoring("generate-lyrics", request, async () =
   if (request.method !== "POST") return fail("Método não permitido.", 405);
 
   try {
-    const input = await request.json() as { recipient?: string; style?: string; voiceGender?: "m" | "f"; honoree?: string; story?: string; productVariant?: "kids_birthday" };
+    const input = await request.json() as { recipient?: string; style?: string; voiceGender?: "m" | "f"; honoree?: string; story?: string; productVariant?: "kids_birthday"; market?: "mexico" };
     if (!input.recipient || !input.style || !["m", "f"].includes(input.voiceGender ?? "") || !input.honoree || !input.story || input.story.trim().split(/\s+/).filter(Boolean).length < 2) return fail("Preencha os dados da história para criar a prévia.");
 
     const apiKey = Deno.env.get("OPENAI_API_KEY");
@@ -43,7 +43,14 @@ REGRAS OBRIGATÓRIAS
 - Adapte naturalmente o tom ao vínculo descrito na homenagem: família, amizade, irmãos, avós ou outra relação.
 
 Responda SOMENTE com a letra final, sem explicações, comentários ou instruções para cantor. Use exatamente os títulos entre colchetes indicados na estrutura.`;
-    const instructions = input.productVariant === "kids_birthday" ? birthdayInstructions : generalInstructions;
+    const mexicanSpanishInstructions = `${generalInstructions}
+
+IDIOMA OBRIGATÓRIO — MÉXICO
+- Escreva TODA a letra exclusivamente em espanhol mexicano natural, inclusive os títulos entre colchetes.
+- Não use português em nenhuma frase da letra.
+- Preserve nomes próprios, apelidos, marcas, datas, números e trechos citados exatamente como foram informados, mesmo que estejam em outro idioma.
+- Adapte expressões, rimas e emoção ao espanhol usado no México; não traduza ou invente detalhes da história.`;
+    const instructions = input.productVariant === "kids_birthday" ? birthdayInstructions : input.market === "mexico" ? mexicanSpanishInstructions : generalInstructions;
 
     const userInput = input.productVariant === "kids_birthday"
       ? `NOME DO ANIVERSARIANTE: ${input.honoree}\nESTILO MUSICAL: ${input.style}\nHISTÓRIA / HOMENAGEM:\n${input.story}`
@@ -59,7 +66,7 @@ Responda SOMENTE com a letra final, sem explicações, comentários ou instruç�
     if (!response.ok || !lyrics) throw new Error(result.error?.message ?? "Não foi possível gerar a letra.");
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    await supabase.from("webhook_events").insert({ provider: "openai", event_key: crypto.randomUUID(), payload: { model: "gpt-5.4-mini", recipient: input.recipient, style: input.style, voice_gender: input.voiceGender, product_variant: input.productVariant ?? "default" } });
+    await supabase.from("webhook_events").insert({ provider: "openai", event_key: crypto.randomUUID(), payload: { model: "gpt-5.4-mini", recipient: input.recipient, style: input.style, voice_gender: input.voiceGender, product_variant: input.productVariant ?? "default", market: input.market ?? "default" } });
     return new Response(JSON.stringify({ lyrics }), { headers: corsHeaders });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Falha ao criar a prévia.", 500);

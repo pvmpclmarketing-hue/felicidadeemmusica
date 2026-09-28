@@ -49,7 +49,7 @@ export default function MexicoPage() {
   const generateLyrics = async () => {
     setLoading(true); setError("");
     try {
-      const data = await edge("generate-lyrics", { recipient: form.recipient, style: form.style, voiceGender: form.voiceGender, honoree: form.honoree, story: form.story });
+      const data = await edge("generate-lyrics", { recipient: form.recipient, style: form.style, voiceGender: form.voiceGender, honoree: form.honoree, story: form.story, market: "mexico" });
       if (!data.lyrics) throw new Error("No fue posible crear tu letra.");
       setLyrics(data.lyrics); setView("lyrics"); window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Inténtalo de nuevo."); }
