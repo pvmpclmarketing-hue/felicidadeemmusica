@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json; charset=utf-8",
 };
-type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; deliveryMode?: "whatsapp" | "download"; previewId?: string; metaEventId?: string; productVariant?: "kids_birthday"; marketingSource?: "tiktok" | "novo"; metaBrowserData?: { fbp?: string; fbc?: string; eventSourceUrl?: string } };
+type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; deliveryMode?: "whatsapp" | "download"; previewId?: string; metaEventId?: string; productVariant?: "kids_birthday" | "felicidadeemmusica_shop"; marketingSource?: "tiktok" | "novo"; metaBrowserData?: { fbp?: string; fbc?: string; eventSourceUrl?: string } };
 const fail = (error: string, status = 400) => new Response(JSON.stringify({ error }), { status, headers: corsHeaders });
 
 async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, eventKey: string, path: string, secretHeader: string, secret: string | undefined, payload: Record<string, unknown>) {
@@ -64,9 +64,13 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     // O valor nunca vem diretamente do navegador: a variante é validada aqui
     // para impedir que alguém altere o valor no DevTools.
+    const requestOrigin = request.headers.get("origin") ?? "";
+    const isFelicidadeEmMusicaShop = /^https:\/\/(?:www\.)?felicidadeemmusica\.shop$/i.test(requestOrigin);
     const amountCents = input.productVariant === "kids_birthday"
       ? 2990
-      : Number(Deno.env.get("MUSIC_PRICE_CENTS") ?? "1990");
+      : input.productVariant === "felicidadeemmusica_shop" && isFelicidadeEmMusicaShop
+        ? 1200
+        : Number(Deno.env.get("MUSIC_PRICE_CENTS") ?? "1990");
     if (!Number.isInteger(amountCents) || amountCents < 100) throw new Error("Valor da música não foi configurado corretamente.");
     let lyrics = input.lyricText?.trim() || null;
     let previewAudioUrls: string[] = [];
@@ -82,7 +86,7 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
     const tracking = {
       fbp: /^fb\.1\.\d+\.\d+$/.test(metaBrowserData.fbp ?? "") ? metaBrowserData.fbp : undefined,
       fbc: /^fb\.1\.\d+\.[\w-]+$/.test(metaBrowserData.fbc ?? "") ? metaBrowserData.fbc : undefined,
-      event_source_url: (() => { try { const url = new URL(metaBrowserData.eventSourceUrl ?? ""); return url.protocol === "https:" && url.hostname.endsWith("memberproduto.shop") ? url.href : undefined; } catch { return undefined; } })(),
+      event_source_url: (() => { try { const url = new URL(metaBrowserData.eventSourceUrl ?? ""); return url.protocol === "https:" && (url.hostname.endsWith("memberproduto.shop") || /(^|\.)felicidadeemmusica\.shop$/i.test(url.hostname)) ? url.href : undefined; } catch { return undefined; } })(),
       client_user_agent: request.headers.get("user-agent")?.slice(0, 1000) || undefined,
     };
     const quiz = { recipient: input.recipient, style: input.style, music_style: input.style, voice_gender: input.voiceGender, honoree: input.name.trim(), story: input.story.trim(), preview_id: input.previewId ?? null, preview_audio_urls: previewAudioUrls, fulfillment_mode: fulfillmentMode, site_variant: input.productVariant === "kids_birthday" ? `kids_birthday_${siteVariant}` : siteVariant, marketing_source: input.marketingSource ?? null, tracking };
