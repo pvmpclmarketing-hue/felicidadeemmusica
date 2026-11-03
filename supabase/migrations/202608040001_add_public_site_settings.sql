@@ -1,6 +1,6 @@
 create table if not exists public.site_public_settings (
   id boolean primary key default true check (id),
-  support_whatsapp text not null default '5522992885365',
+  support_whatsapp text not null default '5522992511400',
   updated_at timestamptz not null default now()
 );
 
@@ -15,5 +15,5 @@ to anon, authenticated
 using (true);
 
 insert into public.site_public_settings (id, support_whatsapp)
-values (true, '5522992885365')
+values (true, '5522992511400')
 on conflict (id) do nothing;

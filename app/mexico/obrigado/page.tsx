@@ -9,7 +9,7 @@ export default function MexicoThankYouPage() {
       <p className="delivery-lead">Tu canción personalizada ya está en preparación. Escríbenos por WhatsApp si necesitas ayuda o quieres acompañar los próximos pasos.</p>
       <SupportWhatsApp
         compact
-        phoneOverride="5522992885365"
+        phoneOverride="5522992511400"
         heading="¿NECESITAS AYUDA?"
         buttonLabel="💬 Hablar por WhatsApp"
         message="¡Hola! Acabo de realizar mi compra y necesito ayuda con mi canción personalizada."

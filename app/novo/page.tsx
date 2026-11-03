@@ -5,5 +5,5 @@ import Home from "../page";
  * Não instala Pixel/API TikTok nem Google Tag; Meta Pixel e CAPI seguem ativos.
  */
 export default function NovoPage() {
-  return <Home marketingSource="novo" supportWhatsApp="5522991040842" />;
+  return <Home marketingSource="novo" supportWhatsApp="5522992511400" />;
 }

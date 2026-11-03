@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const fallbackPhone = (process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? "5522992885365").replace(/\D/g, "");
+const fallbackPhone = (process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? "5522992511400").replace(/\D/g, "");
 const supportMessage = "Olá! Preciso de ajuda com a minha música personalizada.";
 
 export function SupportWhatsApp({ compact = false, phoneOverride, message = supportMessage, heading = "PRECISA DE AJUDA?", buttonLabel = "💬 Chamar no WhatsApp" }: { compact?: boolean; phoneOverride?: string; message?: string; heading?: string; buttonLabel?: string }) {
