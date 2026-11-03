@@ -40,6 +40,7 @@ export default function VslInstaPlayer() {
             controls
             playsInline
             preload="metadata"
+            poster="/vslinsta/vsl-poster.jpg"
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onEnded={() => setIsPlaying(false)}

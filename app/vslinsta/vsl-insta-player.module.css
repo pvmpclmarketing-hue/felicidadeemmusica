@@ -121,7 +121,7 @@
 
 @media (max-width: 480px) {
   .page {
-    padding: max(18px, env(safe-area-inset-top)) 16px max(22px, env(safe-area-inset-bottom));
+    padding: max(18px, env(safe-area-inset-top)) 16px max(140px, calc(env(safe-area-inset-bottom) + 120px));
   }
 
   .content {
