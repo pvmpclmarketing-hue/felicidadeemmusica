@@ -9,7 +9,7 @@ export default function VslInstaPlayer() {
   const [showCta, setShowCta] = useState(false);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => setShowCta(true), 5000);
+    const timeout = window.setTimeout(() => setShowCta(true), 10000);
     return () => window.clearTimeout(timeout);
   }, []);
 
