@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json; charset=utf-8",
 };
-type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; deliveryMode?: "whatsapp" | "download"; previewId?: string; metaEventId?: string; productVariant?: "kids_birthday" | "felicidadeemmusica_shop"; marketingSource?: "tiktok" | "novo"; metaBrowserData?: { fbp?: string; fbc?: string; eventSourceUrl?: string } };
+type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; deliveryMode?: "whatsapp" | "download"; previewId?: string; metaEventId?: string; productVariant?: "kids_birthday" | "felicidadeemmusica_shop"; marketingSource?: "tiktok" | "novo" | "novotiktok"; metaBrowserData?: { fbp?: string; fbc?: string; eventSourceUrl?: string } };
 const fail = (error: string, status = 400) => new Response(JSON.stringify({ error }), { status, headers: corsHeaders });
 
 async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, eventKey: string, path: string, secretHeader: string, secret: string | undefined, payload: Record<string, unknown>) {
@@ -66,7 +66,9 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
     // para impedir que alguém altere o valor no DevTools.
     const requestOrigin = request.headers.get("origin") ?? "";
     const isFelicidadeEmMusicaShop = /^https:\/\/(?:www\.)?felicidadeemmusica\.shop$/i.test(requestOrigin);
-    const amountCents = input.productVariant === "kids_birthday"
+    const amountCents = input.marketingSource === "novotiktok"
+      ? 1990
+      : input.productVariant === "kids_birthday"
       ? 2990
       : input.productVariant === "felicidadeemmusica_shop" && isFelicidadeEmMusicaShop
         ? 1200
@@ -102,7 +104,7 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
 
     // TikTok e /novo criam a cobrança pela Efí no Minifluxo: o certificado P12
     // fica somente naquele backend e nunca chega ao navegador ou ao Supabase.
-    if (input.marketingSource === "tiktok" || input.marketingSource === "novo") {
+    if (input.marketingSource === "tiktok" || input.marketingSource === "novo" || input.marketingSource === "novotiktok") {
       const baseUrl = Deno.env.get("WHATSENTREGAVEL_URL");
       const integrationKey = Deno.env.get("WHATSENTREGAVEL_INTEGRATION_KEY");
       // O mesmo segredo privado é compartilhado com o Minifluxo para os dois

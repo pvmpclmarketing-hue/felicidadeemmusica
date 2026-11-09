@@ -6,7 +6,7 @@ type TikTokResult = { delivered: boolean; eventId: string; error?: string };
 
 function isTikTokOrder(order: Record<string, unknown>) {
   const quiz = (order.quiz_data ?? {}) as Record<string, unknown>;
-  return quiz.marketing_source === "tiktok";
+  return quiz.marketing_source === "tiktok" || quiz.marketing_source === "novotiktok";
 }
 
 async function sendTikTokEvent(
@@ -35,7 +35,7 @@ async function sendTikTokEvent(
       ...(forwardedFor ? { ip: forwardedFor } : {}),
       ...(userAgent ? { user_agent: userAgent } : {}),
     },
-    page: { url: `${Deno.env.get("SITE_URL") ?? ""}/tiktok` },
+    page: { url: `${Deno.env.get("SITE_URL") ?? ""}/${quiz.marketing_source === "novotiktok" ? "novotiktok" : "tiktok"}` },
     properties: {
       currency: "BRL",
       value: amount,
