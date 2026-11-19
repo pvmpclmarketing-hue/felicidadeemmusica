@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json; charset=utf-8",
 };
-type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; deliveryMode?: "whatsapp" | "download"; previewId?: string; metaEventId?: string; productVariant?: "kids_birthday" | "felicidadeemmusica_shop"; marketingSource?: "tiktok" | "novo" | "novotiktok"; metaBrowserData?: { fbp?: string; fbc?: string; eventSourceUrl?: string } };
+type CheckoutInput = { recipient?: string; style?: string; voiceGender?: "m" | "f"; name?: string; story?: string; lyricText?: string; buyerName?: string; buyerPhone?: string; deliveryMode?: "whatsapp" | "download"; previewId?: string; metaEventId?: string; productVariant?: "kids_birthday" | "felicidadeemmusica_shop"; marketingSource?: "tiktok" | "novo" | "novotiktok" | "oferta2"; metaBrowserData?: { fbp?: string; fbc?: string; eventSourceUrl?: string } };
 const fail = (error: string, status = 400) => new Response(JSON.stringify({ error }), { status, headers: corsHeaders });
 
 async function notifyWhatsEntregavel(supabase: ReturnType<typeof createClient>, eventKey: string, path: string, secretHeader: string, secret: string | undefined, payload: Record<string, unknown>) {
@@ -66,7 +66,7 @@ Deno.serve((request) => withApiMonitoring("create-pix", request, async () => {
     // para impedir que alguém altere o valor no DevTools.
     const requestOrigin = request.headers.get("origin") ?? "";
     const isFelicidadeEmMusicaShop = /^https:\/\/(?:www\.)?felicidadeemmusica\.shop$/i.test(requestOrigin);
-    const amountCents = input.marketingSource === "novotiktok"
+    const amountCents = input.marketingSource === "novotiktok" || input.marketingSource === "oferta2"
       ? 1990
       : input.productVariant === "kids_birthday"
       ? 2990
