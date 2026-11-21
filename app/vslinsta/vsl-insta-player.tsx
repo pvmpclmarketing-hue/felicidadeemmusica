@@ -40,12 +40,12 @@ export default function VslInstaPlayer() {
             controls
             playsInline
             preload="metadata"
-            poster="/vslinsta/vsl-poster.jpg"
+            poster="/vslinsta/vsl-poster.jpg?v=anterior"
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onEnded={() => setIsPlaying(false)}
           >
-            <source src="/vslinsta/vsl-musica.mp4" type="video/mp4" />
+            <source src="/vslinsta/vsl-musica.mp4?v=anterior" type="video/mp4" />
             Seu navegador não conseguiu carregar o vídeo. Atualize a página ou tente outro navegador.
           </video>
 
